@@ -18,6 +18,7 @@ import os.path
 import os
 from qcodes.dataset.sqlite_base import select_one_where
                                    
+mpl.rcParams['image.cmap'] = 'hot'
 
 def make_title_from_id(run_id):
     '''Make a descriptive title from a run_id.'''
@@ -61,7 +62,7 @@ def refresh(mode, run_id, figure, axes, cbars):
     new_axes, new_cbars = safe_plot_by_id(run_id, axes)
     for i, _ in enumerate(cbars):
         cbars[i] = new_cbars[i]
-    return axes, cbars
+    # return axes, cbars
 
 
 def prepare_figure(run_id):
@@ -69,24 +70,25 @@ def prepare_figure(run_id):
     axes, _ = safe_plot_by_id(run_id)
     num_axes = len(axes)
     plt.close('all')
-    fig, axes = plt.subplots(num_axes, 1, sharex=True, squeeze=False)
+    fig, axes = plt.subplots(num_axes, 1, squeeze=False)
     axes = axes[:, 0]
-    for axis in axes[:-1]:
-        axis.get_xaxis().get_label().set_visible(False)
     axes, cbars = safe_plot_by_id(run_id, axes)
     title = make_title_from_id(run_id)
     fig.suptitle(title)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     return fig, axes, cbars
     
 
 def make_filenames(run_id):
-    extensions = ['pdf', 'png']
+    dataset = load_by_id(run_id)
+    experiment = load_experiment(dataset.exp_id)
+    db_path = Config()['core']['db_location']
+    db_folder = os.path.dirname(db_path)
+    plot_folder_name = '{}_{}'.format(experiment.sample_name, experiment.name)
+    plot_folder = os.path.join(db_folder, plot_folder_name)
+    os.makedirs(plot_folder, exist_ok=True)
+    extensions = ['png']
     for extension in extensions:
-        db_path = Config()['core']['db_location']
-        db_folder = os.path.dirname(db_path)
-        plot_folder_name = 'plots'
-        plot_folder = os.path.join(db_folder, plot_folder_name)
-        os.makedirs(plot_folder, exist_ok=True)
         filename = '{}.{}'.format(run_id, extension)
         plot_path = os.path.join(plot_folder, filename)
         yield plot_path
@@ -134,8 +136,10 @@ def run_animation(run_id, interval=1., save=True):
         while not is_completed(run_id):
             yield 'active'
         print('Stopped plotting run_id {}.'.format(run_id))
+        fig, axes, cbars = prepare_figure(run_id)
         if save:
             save_figure(filenames)
+        plt.show()
     
     anim = animation.FuncAnimation(fig, refresh, get_frame,
                                    init_func=init_function,
@@ -164,7 +168,12 @@ def listen(interval=1., save=True, first=True):
     p_animate.start()   
     p_listen.start()
     p_animate.join()
-    p_listen.join()  
+    p_listen.join() 
+
+def plot_and_save(run_id):
+    prepare_figure(run_id)
+    filenames = make_filenames(run_id)
+    save_figure(filenames) 
 
 
 if __name__ == '__main__':
