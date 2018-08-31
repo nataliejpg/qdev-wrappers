@@ -20,15 +20,6 @@ from qcodes.dataset.sqlite_base import select_one_where
                                    
 mpl.rcParams['image.cmap'] = 'hot'
 
-def make_title_from_id(run_id):
-    '''Make a descriptive title from a run_id.'''
-    dataset = load_by_id(run_id)
-    experiment = load_experiment(dataset.exp_id)
-    title = '{} on {} (run ID {})'
-    title = title.format(experiment.name, experiment.sample_name,
-                         dataset.run_id)
-    return title
-
 
 def get_last_run_id():
     '''Get the last run_id.'''
@@ -73,8 +64,6 @@ def prepare_figure(run_id):
     fig, axes = plt.subplots(num_axes, 1, squeeze=False)
     axes = axes[:, 0]
     axes, cbars = safe_plot_by_id(run_id, axes)
-    title = make_title_from_id(run_id)
-    fig.suptitle(title)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     return fig, axes, cbars
     
