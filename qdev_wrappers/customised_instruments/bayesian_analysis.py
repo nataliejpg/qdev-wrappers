@@ -21,11 +21,11 @@ class BayesianAnalyser(Instrument):
                                set_cmd=False,
                                get_cmd=None,
                                vals=vals.Numbers())
-        for param, dype in model.expparams_dtype:
+        for param, dtype in model.expparams_dtype:
             self.add_parameter(param,
                                set_cmd=False,
                                get_cmd=None,
-                               vals=dtype_val_mapping[dype]())
+                               vals=dtype_val_mapping[dtype]())
 
     def update(self, meas: Union[float, int, np.ndarray], **setpoints):
         if len(setpoints) != len(self.model.expparams_dtype):
