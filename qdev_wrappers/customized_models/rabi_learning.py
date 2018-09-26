@@ -1,14 +1,18 @@
 import qinfer as qi
 import numpy as np
 
-class RabiModel(qi.FiniteOutcomeModel):
+class PhenomonlogicalRabiModel(qi.FiniteOutcomeModel):
     # TODO: docstring.
 
     @property
-    def n_modelparams(self): return 2
+    def n_modelparams(self):
+        return len(self.modelparam_names)
 
     @property
-    def modelparam_names(self): return [r'\omega_{Rabi}', r'\phi']
+    def modelparam_names(self):
+        return [
+            r'omega_rabi', r'phi', 'T1_inv'
+        ]
 
     @property
     def expparams_dtype(self):
@@ -21,12 +25,24 @@ class RabiModel(qi.FiniteOutcomeModel):
         return np.all(modelparams >= 0, axis=1)
 
     def likelihood(self, outcomes, modelparams, expparams):
-        w, phi = modelparams.T[:, :, None]
+        # Input shapes:
+        #     outcomes:        (n_outcomes,)
+        #     modelparams:     (n_models, n_modelparams)
+        #     expparams:       (n_experiments, )
+        #    
+        # Output shapes:    
+        #     likelihood:      (n_outcomes, n_models, n_experiments)
+        #
+        # Intermediate shapes:
+        #     w, phi, T1_inv:  (n_models,             1)
+        #     t:               (          n_experiments)
+        #     visibility:      (n_models, n_experiments)
+        w, phi, T1_inv = modelparams.T[:, :, None]
         t = expparams['pulse_duration']
 
-        visibility = 1 # np.exp(-t * T2_inv)
+        visibility = np.exp(-t * T1_inv)
 
         pr0 = np.empty((w.shape[0], t.shape[0]))
-        pr0[:, :] = visibility * np.cos(w * t / 2 + phi) ** 2 + (1 - visibility) / 2
+        pr0[:, :] = visibility * np.cos(w * t / 2 + phi) ** 2
 
         return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
