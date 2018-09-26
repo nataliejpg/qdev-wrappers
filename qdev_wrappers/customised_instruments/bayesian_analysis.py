@@ -1,7 +1,7 @@
 import numpy as np
 from qcodes.instrument.base import Instrument
 from qinfer import Model, SMCUpdater
-from qinfor.distributions import Distribution
+from qinfer.distributions import Distribution
 from qcodes.utils import validators as vals
 from typing import Union
 
