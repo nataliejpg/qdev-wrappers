@@ -5,11 +5,14 @@ from qinfer.distributions import Distribution
 from qcodes.utils import validators as vals
 from typing import Union, Dict
 
+from typing import Optional
+
 
 dtype_val_mapping = {'float': vals.Numbers, 'int': vals.Ints}
 
 
 class BayesianAnalyser(Instrument):
+    _updater : Optional[SMCUpdater] = None
     def __init__(self, name, model: Model, prior: Distribution,
                  n_particles: int=4000,
                  scaling_values=Optional[Dict[str, float]]):
@@ -33,7 +36,12 @@ class BayesianAnalyser(Instrument):
                                vals=dtype_val_mapping[dtype](),
                                scale=scaling_values.get(param, None))
 
+    def start_data_run(self):
+        self._updater = SMCUpdater(self.model, self.n_particles, self.prior)
+
     def update(self, meas: Union[float, int, np.ndarray], **setpoints):
+        if self._updater is None:
+            self.start_data_run()
         if len(setpoints) != len(self.model.expparams_dtype):
             raise RuntimeError(
                 'Must specify setpoint values for all expparams of the model. '
@@ -46,7 +54,7 @@ class BayesianAnalyser(Instrument):
             setpoint_param(setpoint_value)
             expparams[setpoint_name] = setpoint_param.raw_value
         self._updater.update(meas, expparams)
-        model_param_estimates = updater.est_mean()
+        model_param_estimates = self._updater.est_mean()
         for i, param_name in enumerate(self.model.modelparam_names):
             model_param = getattr(self, param_name)
             model_param(model_param_estimates[i])
