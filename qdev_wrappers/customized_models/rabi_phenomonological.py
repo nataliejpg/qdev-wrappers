@@ -11,7 +11,7 @@ class PhenomonlogicalRabiModel(qi.FiniteOutcomeModel):
     @property
     def modelparam_names(self):
         return [
-            r'omega_rabi', r'phi', 'T1_inv'
+            r'rabi_frequency', r'qubit_frequency', r'phi', r'T1_inv',
         ]
 
     @property
@@ -25,24 +25,14 @@ class PhenomonlogicalRabiModel(qi.FiniteOutcomeModel):
         return np.all(modelparams >= 0, axis=1)
 
     def likelihood(self, outcomes, modelparams, expparams):
-        # Input shapes:
-        #     outcomes:        (n_outcomes,)
-        #     modelparams:     (n_models, n_modelparams)
-        #     expparams:       (n_experiments, )
-        #    
-        # Output shapes:    
-        #     likelihood:      (n_outcomes, n_models, n_experiments)
-        #
-        # Intermediate shapes:
-        #     w, phi, T1_inv:  (n_models,             1)
-        #     t:               (          n_experiments)
-        #     visibility:      (n_models, n_experiments)
-        w, phi, T1_inv = modelparams.T[:, :, None]
+        rabi_frequency, qubit_frequency, phi, T1_inv = modelparams.T[:, :, None]
+        omega_qubit = 2 * np.pi * qubit_frequency
+        omega_rabi = 2 * np.pi * rabi_frequency
+        detuning = 2 * np.pi * (qubit_frequency - expparams['drive_frequency'])
         t = expparams['pulse_duration']
-
+        omega = np.sqrt(omega_qubit ** 2 + omega_rabi ** 2)
         visibility = np.exp(-t * T1_inv)
-
-        pr0 = np.empty((w.shape[0], t.shape[0]))
-        pr0[:, :] = visibility * np.cos(w * t / 2 + phi) ** 2
+        pr0 = np.empty((rabi_frequency.shape[0], t.shape[0]))
+        pr0[:, :] = visibility * np.cos(omega * t / 2 + phi) ** 2 + (1 - visibility/2)
 
         return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
