@@ -47,8 +47,8 @@ def sweep_expparams(ts, ωts, model=None):
     if model is None:
         model = RabiGADModel()
     expparams = np.empty((ts.shape[0], ωts.shape[0]), dtype=model.expparams_dtype)
-    expparams['t'] = ts[:, None]
-    expparams['ωt'] = ωts
+    expparams['pulse_duration'] = ts[:, None]
+    expparams['drive_frequency'] = 2 * np.pi * ωts
     return expparams
 
 
@@ -86,7 +86,7 @@ diss_m = np.kron(σm, σm) - (np.kron(Ep, I) + np.kron(I, Ep)) / 2
 class RabiGADModel(qi.FiniteOutcomeModel):
     @property
     def modelparam_names(self):
-        return ['ωR', 'ω0', 'p', 'Γ']
+        return ['rabi_frequency', 'qubit_frequency', 'decay_amplitude', 'decay_rate']
 
     @property
     def n_modelparams(self):
@@ -94,7 +94,7 @@ class RabiGADModel(qi.FiniteOutcomeModel):
 
     @property
     def expparams_dtype(self):
-        return [('t', 'float'), ('ωt', 'float')]
+        return [('pulse_duration', 'float'), ('drive_frequency', 'float')]
 
     def n_outcomes(self, modelparams):
         return 2
@@ -104,9 +104,12 @@ class RabiGADModel(qi.FiniteOutcomeModel):
 
     def likelihood(self, outcomes, modelparams, expparams):
         super(RabiGADModel, self).likelihood(outcomes, modelparams, expparams)
-        ωR, ω0, p, Γ = modelparams.T[:, :, None]
-        t = expparams['t']
-        ωt = expparams['ωt']
+        rabi_frequency, qubit_frequency, decay_amplitude, decay_rate = modelparams.T[:, :, None]
+        ωR = 2 * np.pi * rabi_frequency
+        ω0 = 2 * np.pi * qubit_frequency
+        p, Γ = decay_amplitudem decay_rate
+        t = expparams['pulse_duration']
+        ωt = 2 * np.pi * expparams['drive_frequency']
 
         δω = ωt - ω0
 
