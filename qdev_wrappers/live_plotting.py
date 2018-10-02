@@ -68,7 +68,7 @@ def prepare_figure(run_id):
     return fig, axes, cbars
     
 
-def make_filenames(run_id):
+def make_filename(run_id, index=None):
     dataset = load_by_id(run_id)
     experiment = load_experiment(dataset.exp_id)
     db_path = Config()['core']['db_location']
@@ -76,11 +76,12 @@ def make_filenames(run_id):
     plot_folder_name = '{}_{}'.format(experiment.sample_name, experiment.name)
     plot_folder = os.path.join(db_folder, plot_folder_name)
     os.makedirs(plot_folder, exist_ok=True)
-    extensions = ['png']
-    for extension in extensions:
-        filename = '{}.{}'.format(run_id, extension)
-        plot_path = os.path.join(plot_folder, filename)
-        yield plot_path
+    if index is None:
+        filename = '{}.png'.format(run_id)
+    else:
+        filename = '{}_{}.png'.format(run_id, index)
+    plot_path = os.path.join(plot_folder, filename)
+    return plot_path
     
 
 def is_completed(run_id):
@@ -91,14 +92,14 @@ def is_completed(run_id):
     return False if comp_time is None else True
 
 
-def save_figure(filenames):
-    '''Save the current figure at filename.'''
-    for filename in filenames:
-        try:
-            plt.savefig(filename, bbox_inches='tight')
-            print('Saved plot at {}.'.format(filename))
-        except PermissionError:
-            print('File {} already exists, did not save plot.'.format(filename))
+# def save_figure(filenames):
+#     '''Save the current figure at filename.'''
+#     for filename in filenames:
+#         try:
+#             plt.savefig(filename, bbox_inches='tight')
+#             print('Saved plot at {}.'.format(filename))
+#         except PermissionError:
+#             print('File {} already exists, did not save plot.'.format(filename))
 
 
 def init_function():
@@ -116,8 +117,6 @@ def run_animation(run_id, interval=1., save=True):
     except:
         print('run_id {} is not a valid plot.'.format(run_id))
         return
-    if save:
-        filenames = make_filenames(run_id)
     
     def get_frame():
         '''Keep iterating the animation as long as there isn't a new run.'''
@@ -125,10 +124,11 @@ def run_animation(run_id, interval=1., save=True):
         while not is_completed(run_id):
             yield 'active'
         print('Stopped plotting run_id {}.'.format(run_id))
-        fig, axes, cbars = prepare_figure(run_id)
+        axes, cbars = plot_by_id(run_id)
         if save:
-            save_figure(filenames)
-        plt.show()
+            for i, ax in enumerate(axes):
+                ax.figure.savefig(make_filename(run_id, i), bbox_inches='tight')
+        # plt.show()
     
     anim = animation.FuncAnimation(fig, refresh, get_frame,
                                    init_func=init_function,
@@ -163,6 +163,11 @@ def plot_and_save(run_id):
     prepare_figure(run_id)
     filenames = make_filenames(run_id)
     save_figure(filenames) 
+
+def resave_plots(run_id):
+    axes, clb = plot_by_id(run_id)
+    for i, ax in enumerate(axes):
+        ax.figure.savefig(make_filename(run_id, i))
 
 
 if __name__ == '__main__':
