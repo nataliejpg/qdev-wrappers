@@ -16,7 +16,7 @@ class PhenomonlogicalRabiModel(qi.FiniteOutcomeModel):
 
     @property
     def expparams_dtype(self):
-        return [('pulse_duration', 'float')]
+        return [('pulse_duration', 'float'), ('drive_frequency', 'float')]
 
     def n_outcomes(self, modelparams):
         return 2
@@ -35,4 +35,4 @@ class PhenomonlogicalRabiModel(qi.FiniteOutcomeModel):
         pr0 = np.empty((rabi_frequency.shape[0], t.shape[0]))
         pr0[:, :] = visibility * np.cos(omega * t / 2 + phi) ** 2 + (1 - visibility/2)
 
-        return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
+       return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
