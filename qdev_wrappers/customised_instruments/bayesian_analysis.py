@@ -22,7 +22,6 @@ class BayesianAnalyser(Instrument):
         self.model = model
         self.prior = prior
         self.n_particles = n_particles
-        self._updater = SMCUpdater(model, n_particles, prior)
         for param in model.modelparam_names:
             self.add_parameter(param,
                                set_cmd=None,
@@ -35,13 +34,9 @@ class BayesianAnalyser(Instrument):
                                get_cmd=None,
                                vals=dtype_val_mapping[dtype](),
                                scale=scaling_values.get(param, None))
-
-    def start_data_run(self):
-        self._updater = SMCUpdater(self.model, self.n_particles, self.prior)
+        self.reset_updater(self)
 
     def update(self, meas: Union[float, int, np.ndarray], **setpoints):
-        if self._updater is None:
-            self.start_data_run()
         if len(setpoints) != len(self.model.expparams_dtype):
             raise RuntimeError(
                 'Must specify setpoint values for all expparams of the model. '
