@@ -52,7 +52,7 @@ class BayesianAnalyser(Instrument):
         model_param_estimates = self._updater.est_mean()
         for i, param_name in enumerate(self.model.modelparam_names):
             model_param = getattr(self, param_name)
-            model_param(model_param_estimates[i])
+            model_param.raw_value = model_param_estimates[i]
 
     def reset_updater(self):
         self._updater = SMCUpdater(self.model, self.n_particles, self.prior)

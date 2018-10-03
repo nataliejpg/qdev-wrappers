@@ -26,11 +26,10 @@ class PhenomonlogicalRabiModel(qi.FiniteOutcomeModel):
 
     def likelihood(self, outcomes, modelparams, expparams):
         rabi_frequency, qubit_frequency, phi, T1_inv = modelparams.T[:, :, None]
-        omega_qubit = 2 * np.pi * qubit_frequency
         omega_rabi = 2 * np.pi * rabi_frequency
-        detuning = 2 * np.pi * (qubit_frequency - expparams['drive_frequency'])
+        omega_detuning = 2 * np.pi * (qubit_frequency - expparams['drive_frequency'])
         t = expparams['pulse_duration']
-        omega = np.sqrt(omega_qubit ** 2 + omega_rabi ** 2)
+        omega = np.sqrt(omega_detuning ** 2 + omega_rabi ** 2)
         visibility = np.exp(-t * T1_inv)
         pr0 = np.empty((rabi_frequency.shape[0], t.shape[0]))
         pr0[:, :] = visibility * np.cos(omega * t / 2 + phi) ** 2 + (1 - visibility/2)
