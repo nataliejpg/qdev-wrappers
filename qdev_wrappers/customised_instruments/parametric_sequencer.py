@@ -75,7 +75,7 @@ class ParametricSequencer(Instrument):
                  initial_element: Element=None) -> None:
         super().__init__(name)
         self.awg = awg
-
+        self._last_go_to = 0
         # inital values of states
         self._do_upload = True
         self._do_sync_repetion_state = True
@@ -325,7 +325,7 @@ class ParametricSequencer(Instrument):
                 elements.append(new_element)
 
         # make sequence repeat indefinitely
-        elements[-1].sequencing['goto_state'] = 1
+        elements[-1].sequencing['goto_state'] = self._last_go_to
 
         if self.initial_element is not None:
             elements.insert(0, self.initial_element)
