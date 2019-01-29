@@ -75,7 +75,7 @@ class ParametricSequencer(Instrument):
                  initial_element: Element=None) -> None:
         super().__init__(name)
         self.awg = awg
-        self._last_go_to = 0
+        self._last_go_to = 1
         # inital values of states
         self._do_upload = True
         self._do_sync_repetion_state = True
