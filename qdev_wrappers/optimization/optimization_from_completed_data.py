@@ -1,5 +1,6 @@
 import numpy as np
 from qcodes.dataset.data_export import get_data_by_id
+from numpy.random import randint
 from Optimization import Optimization
 from qcodes.dataset.measurements import Measurement
 
@@ -58,6 +59,13 @@ def get_results(variable_params, measured_params, coordinates):
     return results
 
 
+
+
+
+
+
+
+
 def optimize_from_runid(run_id,
                         variable_params,
                         measured_params,
@@ -65,38 +73,32 @@ def optimize_from_runid(run_id,
                         cost_val,
                         stopping_condition,
                         max_num_attempts=250):
-    # requirements, if given, should take a 'candidate' or 'measurement' (parameter coordinates) and
-    # return True or False depending on whether the settings or resulting measurement meet a set of requirements
 
-    optimization = Optimization(variable_params,
-                                measured_params,
-                                stopping_condition,
-                                cost_val,
-                                get_new_coordinates,
-                                reqs=None,
-                                from_completed_dataset=True)
+    start = [randint(0, len(param['values'])) for param in params]
+    current = start
+    best = start
+    num_attempts = 0
+    checked = []
 
-
-    optimization.run_id = run_id
-
-    while not stopping_condition(variable_params, optimization.best) \
-            and not optimization.num_attempts == max_num_attempts:
+    while not stopping_condition(variable_params, best) \
+            and not num_attempts == max_num_attempts:
         # check new parameter settings, select one to move to
-        new_coordinates = get_new_coordinates(optimization.current, variable_params)
-        optimization.num_attempts += 1
+        new_coordinates = get_new_coordinates(current, variable_params)
+        num_attempts += 1
 
         for coordinates in new_coordinates:
             # add location to list of locations checked
-            optimization.checked.append(coordinates)
+            checked.append(coordinates)
             # ToDo: this is not general and needs to be separated out from the rest of it
-            if cost_val(variable_params, measured_params, coordinates) < cost_val(variable_params, measured_params, optimization.current):
-                optimization.current = coordinates
+            if cost_val(variable_params, measured_params, coordinates) < cost_val(variable_params, measured_params, current):
+                current = coordinates
 
-        if cost_val(variable_params, measured_params, optimization.current) < cost_val(variable_params, measured_params, optimization.best):
-            optimization.best = optimization.current
+        if cost_val(variable_params, measured_params, current) < cost_val(variable_params, measured_params, best):
+            best = current
 
-    print(f"Best value: {get_measurement_from_data(variable_params, measured_params, optimization.best)}")
-    return optimization
+    best_val = get_measurement_from_data(variable_params, measured_params, best)
+    print(f"Best value {best_val} at {best}")
+    return best_val, best, checked, num_attempts
 
 
 def try_many(num_attempts,
