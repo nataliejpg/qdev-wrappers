@@ -19,7 +19,6 @@ class Optimization:
     def optimize(self, *params):
 
         self.method.params = [param for param in params]
-        optimization = Optimization(self.method)
 
         meas = Measurement()
 
@@ -27,19 +26,19 @@ class Optimization:
         for parameter in self.method.params:
             setpoints.append(parameter.full_name)
             meas.register_parameter(parameter)
-        for parameter, param_info in self.method.measured_param.items():
+        for parameter, param_info in self.method.measured_params.items():
             meas.register_custom_parameter(name=parameter,
                                            label=param_info['label'],
                                            unit=param_info['unit'],
                                            setpoints=tuple(setpoints))
 
         with meas.run() as datasaver:
-            optimization.run_id = datasaver.run_id
+            run_id = datasaver.run_id
 
-            while not self.method.stopping_condition(optimization):
+            while not self.method.stopping_condition(self.num_attempts):
                 # check new parameter settings, select one to move to
-                next_results = self.method.check_next(optimization)
-                optimization.num_attempts += 1
+                next_results = self.method.check_next(self.current)
+                self.num_attempts += 1
 
                 for result in next_results:
                     res = []
@@ -47,7 +46,7 @@ class Optimization:
                         res.append((param, val))
                     datasaver.add_result(*res)
 
-                next_location = self.method.select_next_location(next_results, optimization.current)
+                next_location = self.method.select_next_location(next_results, self.current)
                 
                 if next_location not in next_results:
                     res = []
@@ -55,13 +54,13 @@ class Optimization:
                         res.append((param, val))
                     datasaver.add_result(*res)
 
-                optimization.current = next_location
-                if self.method.cost_val(next_location) < optimization.best_cost_val:
-                    optimization.best = optimization.current
-                    optimization.best_cost_val = self.method.cost_val(next_location)
+                self.current = next_location
+                if self.method.cost_val(next_location) < self.best_cost_val:
+                    self.best = self.current
+                    self.best_cost_val = self.method.cost_val(next_location)
 
-        print(f"Best: {optimization.best}")
-        return optimization
+        print(f"Best: {self.best}")
+        return run_id
 
     def try_many(self, *params, num_repetitions=100, success_condition=None):
         # ToDo: change this to be for optimization while measuring
