@@ -19,12 +19,8 @@ def get_neighbours(current_coordinates, variable_params):
     return neighbours
 
 
-
 def weighted_movement(current_coordinates, variable_params):
-    next_param_coordinates = {}
-
-    for i, param in enumerate(variable_params):
-        pass
+    pass
 
 
 def pedulum_search(current_coordinates, variable_params):

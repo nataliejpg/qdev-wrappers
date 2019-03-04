@@ -22,7 +22,7 @@ def make_params_dict(*params):
                                        'min_step_size': param[1]}
 
 
-def optimize_from_runid(run_id,
+def optimize_while_measuring(
                         variable_params,
                         measured_params,
                         get_new_coordinates,
@@ -41,8 +41,9 @@ def optimize_from_runid(run_id,
                                 from_completed_dataset=True)
 
 
-    optimization.run_id = run_id
+
     meas = Measurement()
+
     setpoints = []
     for parameter in variable_params:
         setpoints.append(parameter['name'])
@@ -56,7 +57,7 @@ def optimize_from_runid(run_id,
                                        setpoints=tuple(setpoints))
 
     with meas.run() as datasaver:
-        run_id = datasaver.run_id
+        optimization.run_id = datasaver.run_id
 
         while not stopping_condition(variable_params, optimization.best) \
                 and not optimization.num_attempts == max_num_attempts:
