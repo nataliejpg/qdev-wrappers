@@ -6,19 +6,29 @@ from Methods import ReadoutFidelityOptimization
 
 class Optimization:
 
+    #ToDo: separate optimize function from Optimization, so that it creates and returns an optimization instead
+    #ToDo: params and step size in optimization instead of in method
+    #ToDo: make measurement optional when optimizing
+
     def __init__(self, method: ReadoutFidelityOptimization):
         self.method = method
         self.params = method.params
         self.num_attempts = 0
-        self.start = [param() for param in self.params]
+        self.start = {param.full_name: param() for param in self.params}
 
-        self.current = self.start
-        self.best_cost_val = method.measurement_function()
+        self.current = self.start.copy()
+        initial_measurement = method.measurement_function()
+        for i, param in enumerate(method.measured_params):
+            self.current[param] = initial_measurement[i]
+
+        self.best_cost_val = method.cost_val(method.measurement_function())
         self.best = self.start
 
     def optimize(self, *params):
 
         self.method.params = [param for param in params]
+        #ToDo: this is not great - it needs to update step size too, and these things shouldn't be stored in the model.
+        #But maybe a list of possible parameters and their default step sizes are stored in the model?
 
         meas = Measurement()
 

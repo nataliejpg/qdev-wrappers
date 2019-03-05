@@ -5,21 +5,24 @@ from itertools import product
 
 class ReadoutFidelityOptimization:
 
-    def __init__(self, *params, max_attempts=250):
+    def __init__(self, *params, get_data, max_attempts=250):
+        # get_data: pwa.alazar_channels.data
         # ToDo: figure out better solution for step size?
+        # ToDo: I think params just go in the optimize function, instead of in the model, so model just needs get_data
         self.params = [item for item in params if isinstance(item, qc.Parameter)]
         self.step_size = [item for item in params if isinstance(item, float)]
         self.measured_params = {'readout_fidelity': {'label': 'Readout Fidelity', 'unit': ''}}
         self.max_attempts = max_attempts
+        self.get_data = get_data
 
-    def check_next(self, optimization):
+    def check_next(self, current_location):
         """Takes current location in parameter space, decides next coordinates to measure
             Returns a list of dictionaries, one for each location, with parameters (both variable
             and measured) and their values"""
         pass
         # return next_results
 
-    def select_next_location(self, next_results, optimization):
+    def select_next_location(self, next_results, current_location):
         """Takes next coordinates and measurements from check_next, and the current
          best value found from the optimization, uses them to decide where to go next.
          Returns parameters and a measurement for next location"""
@@ -28,7 +31,7 @@ class ReadoutFidelityOptimization:
 
     def measurement_function(self):
         """defines what to call to measure"""
-        results = pwa.alazar_channels.data()
+        results = self.get_data()
         no_pi_real = results[0][:, 0]
         no_pi_im = results[1][:, 0]
         pi_real = results[0][:, 1]
@@ -49,6 +52,10 @@ class ReadoutFidelityOptimization:
             val = measurement['readout_fidelity']
         elif isinstance(measurement, float):
             val = measurement
+        elif isinstance(measurement, list):
+            if len(measurement) > 1:
+                raise RuntimeError(f"Too many values for measurement - expected 1 and got {len(measurement)}")
+            val = measurement[0]
         else:
             raise RuntimeError(f"I don't know what to do with a measurement in this format: {measurement}")
         return 1-val
