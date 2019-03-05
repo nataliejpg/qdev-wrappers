@@ -39,10 +39,10 @@ class ReadoutFidelityOptimization:
 
         fidelity_info = calculate_fidelity(no_pi_real, no_pi_im, pi_real, pi_im)
 
-        return [fidelity_info.max_separation_value]
+        return [fidelity_info.max_separation]
 
     def stopping_condition(self, num_attempts):
-        if num_attempts > self.max_attempts:
+        if num_attempts >= self.max_attempts:
             return True
         else:
             return False
@@ -108,10 +108,12 @@ class WeightedMovement(ReadoutFidelityOptimization):
         next_param_vals = {}
         next_locations = []
 
+        # Todo: make this a property of the method, so that it actually goes down with each repetition of the function
         step_multiplier = 10
 
         for i, param in enumerate(self.params):
             step = step_multiplier * self.step_size[i]
+            # Todo: this makes no sense here, unless it is a property of the method
             step_multiplier -= 1
             next_param_vals[param.full_name] = [optimization.current[param.full_name] - step,
                                                 optimization.current[param.full_name] + step]
@@ -133,16 +135,20 @@ class WeightedMovement(ReadoutFidelityOptimization):
     def select_next_location(self, next_locations, optimization):
         # go to new location based on weighted
         current_location = optimization.current
-        delta_params = {param: 0 for param in self.params}
+        delta_params = {param.full_name: 0 for param in self.params}
 
         for candidate in next_locations:
             cv = self.cost_val(candidate)
-            for param in candidate:
-                d = candidate[param] - current_location[param]
-                delta_params[param] += d/cv
+            for param in self.params:
+                d = candidate[param.full_name] - current_location[param.full_name]
+                delta_params[param.full_name] += d/cv
 
-        for param in current_location:
-            current_location[param] += delta_params[param]
+        for param in self.params:
+            current_location[param.full_name] += delta_params[param.full_name]
+            param(current_location[param.full_name])
+        measurement = self.measurement_function()
+        for i, measured_param in enumerate(self.measured_params):
+            current_location[measured_param] = measurement[i]
 
         return current_location
 
