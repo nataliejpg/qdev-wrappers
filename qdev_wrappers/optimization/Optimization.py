@@ -53,7 +53,8 @@ class Optimization:
                 for result in next_results:
                     res = []
                     for param, val in result.items():
-                        res.append((param, val))
+                        if val is not None:
+                            res.append((param, val))
                     datasaver.add_result(*res)
 
                 next_location = self.method.select_next_location(next_results, self.current)
