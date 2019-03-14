@@ -217,6 +217,6 @@ class StationConfigurator:
         self.station.add_component(instr)
 
         # restart Monitor
-        Monitor(*self.monitor_parameters.values())
+#        Monitor(*self.monitor_parameters.values())
 
         return instr

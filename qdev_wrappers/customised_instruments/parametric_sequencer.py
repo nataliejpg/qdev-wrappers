@@ -1,7 +1,7 @@
 import logging
 
 from typing import Dict, Union, Tuple, Sequence, NamedTuple
-from broadbean.types import ContextDict, ForgedSequenceType, Symbol
+from lomentum.types import ContextDict, ForgedSequenceType, Symbol
 
 from copy import copy
 from functools import partial
@@ -14,10 +14,10 @@ from qcodes.instrument.base import Instrument
 from qcodes.instrument.channel import InstrumentChannel
 from qcodes.utils import validators
 
-import broadbean as bb
-from broadbean.element import Element
-from broadbean.segment import in_context
-from broadbean.plotting import plotter
+import lomentum as bb
+from lomentum.element import Element
+from lomentum.segment import in_context
+from lomentum.plotting import plotter
 
 from qdev_wrappers.customised_instruments.AWGinterface import AWGInterface
 
@@ -71,6 +71,7 @@ class ParametricSequencer(Instrument):
                  context: ContextDict=None,
                  units: Dict[Symbol, str]=None,
                  labels: Dict[Symbol, str]=None,
+                 routes=None,
                  first_sequence_element: Element=None,
                  initial_element: Element=None) -> None:
         super().__init__(name)
@@ -79,6 +80,7 @@ class ParametricSequencer(Instrument):
         # inital values of states
         self._do_upload = True
         self._do_sync_repetion_state = True
+        self._routes = routes
 
         # all symbols are mapped to parameters that live on the SequenceChannel
         # and RepeatChannel respectively

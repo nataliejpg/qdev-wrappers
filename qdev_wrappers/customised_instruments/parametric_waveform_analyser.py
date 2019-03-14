@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple, Sequence
-from broadbean.element import Element
-from broadbean.types import ContextDict, Symbol
+from lomentum.element import Element
+from lomentum.types import ContextDict, Symbol
 import logging
 import numpy as np
 from contextlib import contextmanager
@@ -167,7 +167,7 @@ class DemodulationChannel(InstrumentChannel):
             self.drive_frequency(drive_frequency)
 
     def _set_drive_freq(self, drive_frequency):
-        sideband = self._parent._carrier_freq - drive_frequency
+        sideband = drive_frequency - self._parent._carrier_freq
         demod = self._parent._base_demod_freq + sideband
         sequencer_sideband = getattr(
             self._parent.sequencer.sequence,
@@ -196,12 +196,12 @@ class DemodulationChannel(InstrumentChannel):
         if sideband is not None and drive is not None:
             raise RuntimeError('Cannot set drive and sideband simultaneously')
         elif drive is not None:
-            sideband = carrier - drive
+            sideband = drive - carrier
         elif sideband is not None:
             drive = carrier - sideband
         else:
             sideband = self.sideband_frequency()
-            drive = carrier - sideband
+            drive = carrier + sideband
         demod = base_demod + sideband
         if old_sideband != sideband:
             sequencer_sideband = getattr(
@@ -246,19 +246,18 @@ class ParametricWaveformAnalyser(Instrument):
                  name: str,
                  sequencer,
                  alazar,
-                 heterodyne_source,
+                 carrier_source,
                  initial_sequence_settings: Dict=None) -> None:
         super().__init__(name)
-        self.add_parameter('')
         self.sequencer, self.alazar = sequencer, alazar
-        self.heterodyne_source = heterodyne_source
+        self.carrier_source = carrier_source
         self.alazar_controller = ATSChannelController(
             'alazar_controller', alazar.name)
         self.alazar_channels = self.alazar_controller.channels
         demod_channels = ChannelList(self, "Channels", DemodulationChannel)
         self.add_submodule("demod_channels", demod_channels)
-        self._base_demod_freq = heterodyne_source.demodulation_frequency()
-        self._carrier_freq = heterodyne_source.frequency()
+        self._base_demod_freq = 0
+        self._carrier_freq = carrier_source.frequency()
         self.add_parameter(name='int_time',
                            set_cmd=self._set_int_time,
                            label='Integration Time',
@@ -351,10 +350,8 @@ class ParametricWaveformAnalyser(Instrument):
                 'seq modes on sequencer and alazar do not match')
 
     def _set_base_demod_frequency(self, demod_freq):
-        self._base_demod_freq = demod_freq
-        self.heterodyne_source.demodulation_frequency(demod_freq)
-        for demod_ch in self.demod_channels:
-            demod_ch.update()
+        if demod_freq != 0:
+            raise RuntimeError('only 0 allowed as base demod freq')
 
     @contextmanager
     def sideband_update(self):
@@ -367,7 +364,7 @@ class ParametricWaveformAnalyser(Instrument):
 
     def _set_carrier_frequency(self, carrier_freq):
         self._carrier_freq = carrier_freq
-        self.heterodyne_source.frequency(carrier_freq)
+        self.carrier_source.frequency(carrier_freq)
         for demod_ch in self.demod_channels:
             demod_ch.update()
 
@@ -423,7 +420,7 @@ class ParametricWaveformAnalyser(Instrument):
                                  average_records=settings['average_records'],
                                  average_buffers=settings['average_buffers'],
                                  integrate_samples=integrate_time)
-        chan.demod_freq(demod_ch.demodulation_frequency())
+        chan.demod_freq(abs(demod_ch.demodulation_frequency()))
         if demod_type in 'm':
             chan.demod_type('magnitude')
             chan.data.label = 'Cavity Magnitude Response'
@@ -598,7 +595,7 @@ class ParametricWaveformAnalyser(Instrument):
                     settings['buffer_setpoint_name'] = buffers_symbol
                     settings['buffer_setpoint_label'] = buffers_param.label
                     settings['buffer_setpoint_unit'] = buffers_param.unit
-                    settings['buffers'] = len(buffer_setpoints)
+                    settings['buffers'] = len(buffers_setpoints)
                 else:
                     settings['buffers'] = num
                     settings['buffer_setpoints'] = np.arange(num)

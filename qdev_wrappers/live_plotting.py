@@ -18,7 +18,7 @@ import os.path
 import os
 from qcodes.dataset.sqlite_base import select_one_where
                                    
-mpl.rcParams['image.cmap'] = 'hot'
+mpl.rcParams['image.cmap'] = 'magma'
 
 
 def get_last_run_id():
