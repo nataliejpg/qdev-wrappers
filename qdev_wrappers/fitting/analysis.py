@@ -95,7 +95,7 @@ class Analysis:
                         all(res['setpoints'][setpoint_name] == value for
                             setpoint_name, value in setpoint_values.items()))
 
-    def _plot_1d(self, xdata, ydata, parameter_values, param_variance, line_style, rescale_axes=True):
+    def _plot_1d(self, xdata, ydata, parameter_values, param_variance, rescale_axes=True):
 
         # plot data, and fit if successful
         plt.figure(figsize=(10, 4))
@@ -103,7 +103,7 @@ class Analysis:
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
 
-        ax.plot(xdata['data'], ydata['data'], marker='.', markersize=5, linestyle=line_style, color='C0')
+        ax.plot(xdata['data'], ydata['data'], marker='.', markersize=5, linestyle='', color='C0')
         if parameter_values is None:
             pass
         else:
@@ -139,7 +139,7 @@ class Analysis:
 
         return ax
 
-    def plot(self, rescale_axes: bool = True, show_variance=False, save_plot=False, line_style=''):
+    def plot(self, rescale_axes: bool = True, show_variance=False, save_plot=False):
 
         if len(self.function_vars) > 1:
             raise NotImplementedError("Sorry, you have specified multiple function variables, and plotting only "
@@ -149,7 +149,7 @@ class Analysis:
             axes = []
             colorbar = None
             title = "Run #{} fitted, Experiment {} ({})".format(self.experiment_info['run_id'],
-                                                                self.experiment_info['exp_name'],
+                                                                self.experiment_info['exp_id'],
                                                                 self.experiment_info['sample_name'])
         if len(self.setpoints) == 0:  # 1D PLOTTING
 
@@ -158,7 +158,7 @@ class Analysis:
                 param_variance = self.fit_results[0]['variance']
             else:
                 param_variance = None
-            ax = self._plot_1d(indept_var, self.dept_var, parameter_values, param_variance, line_style, rescale_axes)
+            ax = self._plot_1d(indept_var, self.dept_var, parameter_values, param_variance, rescale_axes)
             ax.set_title(title)
             axes.append(ax)
 
@@ -248,6 +248,7 @@ class Analysis:
 
     def save(self, save_plots=False):
         # Todo: save dill (model only? model and fitter?)
+
         # Save plots to folder
         if save_plots:
             axes, colorbars = self.plot()
@@ -293,11 +294,10 @@ class Analysis:
             exp = new_experiment(self.experiment_info['sample_name'],
                                  sample_name=self.experiment_info['sample_name'])
             self.experiment_info['exp_id'] = exp.exp_id
-        # metadata currently cannot handle nested dictionaries, so any additional levels of the dictionary must be converted to strings
-        all_metadata = {'model': str(self.metadata),
-                        'inferred_from': str({'run_id': self.experiment_info['run_id'],
+        all_metadata = {'model': self.metadata,
+                        'inferred_from': {'run_id': self.experiment_info['run_id'],
                                           'exp_id': self.experiment_info['exp_id'],
-                                          'dept_var': self.dept_var['name']})}
+                                          'dept_var': self.dept_var['name']}}
         dataset = new_data_set('results',
                                specs=paramspecs,
                                metadata=all_metadata)
@@ -318,7 +318,7 @@ class Analysis:
         dataset.add_results(results)
         dataset.mark_complete()
         print(f"\n Analysis saved with run id {dataset.run_id}")
-        return dataset.run_id
+        return dataset
 
     def _save_image(self, axes):
         """

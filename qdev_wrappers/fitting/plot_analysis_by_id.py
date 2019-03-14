@@ -7,7 +7,6 @@ from qcodes import config
 from qcodes.dataset.data_export import get_data_by_id, load_by_id
 from qcodes.dataset.plotting import _rescale_ticks_and_units, plot_by_id
 from qcodes.dataset.sqlite_base import connect, transaction
-from Misc.save_plots import make_filename
 
 
 def plot_analysis_by_id(analysis_run_id, save_plot=False, **setpoints):
@@ -76,8 +75,7 @@ def plot_analysis_by_id(analysis_run_id, save_plot=False, **setpoints):
         raise NotImplementedError(f'sorry, {len(data)-1} is too many dimensions for now')
         # ToDo: it could still attempt plot_by_id for 2 setpoints, that should work fine
     if save_plot is True:
-        for i, ax in enumerate(axes):
-            ax.figure.savefig(make_filename(analysis_run_id, i))
+        _save_plot(axes, analysis_run_id)
 
     return axes
 
@@ -160,15 +158,14 @@ def _retrieve_parameter_dict(analysis_run_id, data_length, **setpoints):
 
 def _plot_1d(analysis_run_id, data_run_id, xdata, ydata, param_dict, **setpoints):
 
-    analysis_info = load_by_id(analysis_run_id)
-    model_info = eval(analysis_info.metadata['model'])
-
     if type(model_info['function']) is not dict:
         raise RuntimeError("Function information for that model was not saved as a dictionary, so the numpy function "
                            "for plotting can't be retrieved.")
     elif 'func_np' not in model_info['function'].keys():
         raise RuntimeError("That model did not save a numpy function for plotting, so plotting doesn't work.")
 
+    analysis_info = load_by_id(analysis_run_id)
+    model_info = eval(analysis_info.metadata['model'])
     title = f"Analysis #{analysis_run_id} (measurement #{data_run_id}) \n " \
             f"{analysis_info.exp_name} ({analysis_info.sample_name})"
 

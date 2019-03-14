@@ -4,7 +4,6 @@ from itertools import product
 import warnings
 # warnings.simplefilter("always")
 from qdev_wrappers.fitting.analysis import Analysis
-from qdev_wrappers.fitting.plot_analysis_by_id import plot_analysis_by_id
 
 
 class Fitter:
@@ -29,14 +28,11 @@ class Fitter:
         if self.r2_limit is not None:
             analysis.metadata['r2_limit'] = self.r2_limit
 
-        analysis = self._do_fitting_procedure(analysis)
+        fit = self._do_fitting_procedure(analysis)
         if save_fit:
-            runid = analysis.save()
-            plot_analysis_by_id(runid, save_plot=True)
-        else:
-            print("Fit was not saved, because you told it not to.")
+            fit.save()
 
-        return analysis
+        return fit
 
     def _do_fitting_procedure(self, analysis):
         """
@@ -80,7 +76,7 @@ class Fitter:
                 for i in range(1, len(setpoint_names)):
                     new_indices = np.argwhere(
                             setpoints[setpoint_names[0]]['data'] == setpoint_combination[0]).flatten()
-                    indices = indices.intersection(new_indices)
+                    indices = indices.intesection(new_indices)
                 indices = list(indices)
                 output_data_array = full_output_data_array[indices]
                 function_variable_arrays = {}
@@ -132,6 +128,7 @@ class Fitter:
 
         # Organize fit info (fx. variance, inital guess, etc). Organization is defined in the model
         params_dict = self.model.organize_fit_info(params_dict)
+
         return param_values, params_dict
 
     def _find_estimate(self, param_values_dict, **function_variable_arrays):

@@ -109,20 +109,3 @@ class CosineGuess(Guess):
         p = 0
 
         return [a, w, p, b]
-
-class LinearGuess(Guess):
-    """Guess for f(x) = m*x  +  b"""
-
-    def make_guess(self, y, x):
-
-        length = len(y)
-        y1 = y[np.argmax(x)]
-        y2 = y[np.argmin(x)]
-        m = (y1 - y2)/length
-
-        idx = np.argmin(abs(x))
-        b = y[idx]
-
-
-
-        return [m, b]

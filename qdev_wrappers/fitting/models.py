@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Model(object):
     def __init__(self, model_parameters, model_vars, model_function, guess):
         self.parameters = model_parameters
@@ -94,3 +93,4 @@ class SimpleMinimum(Model):
     def update_unit(self, parameter, unit):
         self.parameters[parameter]['unit'] = unit
         print('{} unit updated to {}'.format(parameter, unit))
+

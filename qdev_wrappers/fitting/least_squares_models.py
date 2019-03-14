@@ -1,6 +1,6 @@
 import numpy as np
-from qdev_wrappers.fitting.models import Model
-import qdev_wrappers.fitting.guess as g
+from models import Model
+import guess as g
 from scipy.optimize import curve_fit
 
 
@@ -124,7 +124,7 @@ class DecayT1(LeastSquaresModel):
         super().__init__(model_parameters, model_vars, model_function, guess)
 
 
-class ExpDecaySin(LeastSquaresModel):
+class DecayingRabis(LeastSquaresModel):
 
     def __init__(self):
         guess = g.ExpDecaySinGuess()
@@ -140,27 +140,4 @@ class ExpDecaySin(LeastSquaresModel):
         super().__init__(model_parameters, model_vars, model_function, guess)
 
 
-class RabiT1(LeastSquaresModel):
 
-    def __init__(self):
-        guess = g.RabiT1Guess()
-        model_parameters = {'T': {'label': '$T_2$',      'unit': 's'},
-                            'w': {'label': '$w_{rabi}$', 'unit': 'Hz'}}
-        model_vars = ['x']
-        model_function = {'str': r'$f(x) = e^(-x/T_1) \cos^2(\omega x / 2) + (1 - e^(-x/T_1)) / 2$',
-                          'np': 'np.exp(-x/T) * np.cos(w * x / 2 ) ** 2 + (1 - np.exp(-x/T)) / 2'}
-
-        super().__init__(model_parameters, model_vars, model_function, guess)
-
-
-class Linear(LeastSquaresModel):
-
-    def __init__(self):
-        guess = g.LinearGuess()
-        model_parameters = {'m': {'label': 'm',       'unit': ''},
-                            'b': {'label': 'b',       'unit': ''}}
-        model_vars = ['x']
-        model_function = {'str': r'$f(x) = mx + b$',
-                          'np': 'm*x+b'}
-
-        super().__init__(model_parameters, model_vars, model_function, guess)
