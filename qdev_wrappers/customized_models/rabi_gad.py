@@ -45,7 +45,7 @@ def vectorized_expm(As):
 
 def sweep_expparams(ts, ωts, model=None):
     if model is None:
-        model = RabiGADModel()
+        model = GADRabiModel()
     expparams = np.empty((ts.shape[0], ωts.shape[0]), dtype=model.expparams_dtype)
     expparams['pulse_duration'] = ts[:, None]
     expparams['drive_frequency'] = 2 * np.pi * ωts
@@ -83,7 +83,7 @@ diss_m = np.kron(σm, σm) - (np.kron(Ep, I) + np.kron(I, Ep)) / 2
 ## MODELS ##
 
 
-class RabiGADModel(qi.FiniteOutcomeModel):
+class GADRabiModel(qi.FiniteOutcomeModel):
     @property
     def modelparam_names(self):
         return ['rabi_frequency', 'qubit_frequency', 'decay_amplitude', 'decay_rate']
@@ -103,11 +103,11 @@ class RabiGADModel(qi.FiniteOutcomeModel):
         return np.ones((modelparams.shape[0], ), dtype=bool)
 
     def likelihood(self, outcomes, modelparams, expparams):
-        super(RabiGADModel, self).likelihood(outcomes, modelparams, expparams)
+        super(GADRabiModel, self).likelihood(outcomes, modelparams, expparams)
         rabi_frequency, qubit_frequency, decay_amplitude, decay_rate = modelparams.T[:, :, None]
         ωR = 2 * np.pi * rabi_frequency
         ω0 = 2 * np.pi * qubit_frequency
-        p, Γ = decay_amplitudem decay_rate
+        p, Γ = decay_amplitude, decay_rate
         t = expparams['pulse_duration']
         ωt = 2 * np.pi * expparams['drive_frequency']
 
