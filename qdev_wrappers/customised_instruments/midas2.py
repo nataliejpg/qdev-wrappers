@@ -487,6 +487,7 @@ class Midas(VisaInstrument):
         Perform a capture using the hardware trigger.
         """
         self.sendMsg(CMD_NUMS.CAPTURE_1D_TRACE)
+
         if callable(fn_start):
             fn_start()
 

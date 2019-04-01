@@ -10,9 +10,7 @@ import numpy as np
 class ReadoutFidelityOptimization:
 
     def __init__(self, *params, get_data, max_attempts=250):
-        # get_data: pwa.alazar_channels.data
         # ToDo: figure out better solution for step size?
-        # ToDo: I think params just go in the optimize function, instead of in the model, so model just needs get_data
         self.params = [item for item in params if isinstance(item, qc.Parameter)]
         self.step_size = [item for item in params if isinstance(item, float)]
         self.measured_params = {'readout_fidelity': {'label': 'Readout Fidelity', 'unit': ''}}
@@ -58,14 +56,14 @@ class ReadoutFidelityOptimization:
             val = measurement
         elif isinstance(measurement, list):
             if len(measurement) > 1:
-                raise RuntimeError(f"Too many values for measurement - expected 1 and got {len(measurement)}")
+                raise RuntimeError(f"Too many values for measurement - expected 1 value and got {len(measurement)}")
             val = measurement[0]
         else:
             raise RuntimeError(f"I don't know what to do with a measurement in this format: {measurement}")
         return 1-val
 
 
-class Rabis:
+class RabiFrequencyOptimization:
 
     def __init__(self, *params, get_data, max_attempts=250):
         # get_data = pwa.alazar_channels.data
@@ -97,7 +95,7 @@ class Rabis:
 
         fitter = Fitter(lsm.CosineModel())
         fit = fitter.fit(data, x=pulse_dur)
-
+        
         if fit[0] is None:
             pi_pulse_duration=None
         else:
@@ -177,8 +175,7 @@ class BestNeighbour(ReadoutFidelityOptimization):
                 current_location = candidate
         return current_location
 
-
-class BestNeighbourPiPulse(Rabis):
+class BestNeighbourPiPulse(RabiFrequencyOptimization):
 
     def check_next(self, current_location):
         """Takes current location in parameter space, decides next coordinates to measure
@@ -215,25 +212,22 @@ class BestNeighbourPiPulse(Rabis):
                 current_location = candidate
         return current_location
 
-
 class WeightedMovement(ReadoutFidelityOptimization):
 
-    def check_next(self, optimization):
+    def check_next(self, current_location):
         """Takes current location in parameter space, decides next coordinates to measure
             Returns a list of dictionaries, one for each location, with parameters (both variable
             and measured) and their values"""
         next_param_vals = {}
         next_locations = []
 
-        # Todo: make this a property of the method, so that it actually goes down with each repetition of the function
         step_multiplier = 10
 
         for i, param in enumerate(self.params):
             step = step_multiplier * self.step_size[i]
-            # Todo: this makes no sense here, unless it is a property of the method
             step_multiplier -= 1
-            next_param_vals[param.full_name] = [optimization.current[param.full_name] - step,
-                                                optimization.current[param.full_name] + step]
+            next_param_vals[param.full_name] = [current_location[param.full_name] - step,
+                                                current_location[param.full_name] + step]
 
         param_combinations = product(*[set(v) for v in next_param_vals.values()])
 
@@ -249,9 +243,8 @@ class WeightedMovement(ReadoutFidelityOptimization):
 
         return next_locations
 
-    def select_next_location(self, next_locations, optimization):
+    def select_next_location(self, next_locations, current_location):
         # go to new location based on weighted
-        current_location = optimization.current
         delta_params = {param.full_name: 0 for param in self.params}
 
         for candidate in next_locations:
@@ -267,7 +260,7 @@ class WeightedMovement(ReadoutFidelityOptimization):
         for i, measured_param in enumerate(self.measured_params):
             current_location[measured_param] = measurement[i]
 
-        return current_location
+        return current_location, delta_params
 
 
 class PendulumSearch:
