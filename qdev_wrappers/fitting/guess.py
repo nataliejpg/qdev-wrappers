@@ -2,110 +2,99 @@ import numpy as np
 import scipy.fftpack as fftpack
 
 
-class Guess:
-    def __init__(self):
-        pass
+def exp_decay(y, x):
+    """Guess for f(x) = a * e^(-x / b)  +  c"""
+    length = len(y)
+    val_init = y[0:round(length / 20)].mean()
+    val_fin = y[-round(length / 20):].mean()
+
+    a = val_init - val_fin
+
+    c = val_fin
+
+    # guess b as point where data has fallen to 1/e of init value
+    idx = (np.abs(y - a / np.e - c)).argmin()
+    b = x[idx]
+
+    return [a, b, c]
 
 
-class ExpDecayGuess(Guess):
-    """Guess for f(x) = a * e^(-x/b)  +  c"""
+def exp_decay_sin(y, x):
+    """Guess for f(x) = a * e^(-x / b) sin(w*x + p)  + c"""
+    a = y.max() - y.min()
 
-    def make_guess(self, y, x):
+    c = y.mean()
 
-        length = len(y)
-        val_init = y[0:round(length / 20)].mean()
-        val_fin = y[-round(length / 20):].mean()
+    # guess b as point half way point in data
+    b = x[round(len(x) / 2)]
 
-        a = val_init - val_fin
+    # Get initial guess for frequency from a fourier transform
+    yhat = fftpack.rfft(y - y.mean())
+    idx = (yhat**2).argmax()
+    freqs = fftpack.rfftfreq(len(x), d=(x[1] - x[0]) / (2 * np.pi))
+    w = freqs[idx]
 
-        c = val_fin
+    p = 0
 
-        # guess b as point where data has fallen to 1/e of init value
-        idx = (np.abs(y - a / np.e - c)).argmin()
-        b = x[idx]
-
-        return [a, b, c]
-
-
-class ExpDecaySinGuess(Guess):
-    """Guess for f(x) = a * e^(-x/b) sin(wx+p)  + c"""
-
-    def make_guess(self, y, x):
-
-        a = y.max() - y.min()
-
-        c = y.mean()
-
-        # guess b as point half way point in data
-        b = x[round(len(x) / 2)]
-
-        # Get initial guess for frequency from a fourier transform
-        yhat = fftpack.rfft(y - y.mean())
-        idx = (yhat**2).argmax()
-        freqs = fftpack.rfftfreq(len(x), d=(x[1] - x[0]) / (2 * np.pi))
-        w = freqs[idx]
-
-        p = 0
-
-        return [a, b, w, p, c]
+    return [a, b, w, p, c]
 
 
-class PowerDecayGuess(Guess):
-
+def power_decay(y, x):
     """Guess for f(x) = a * b^x + c"""
+    length = len(y)
+    val_init = y[0:round(length / 20)].mean()
+    val_fin = y[-round(length / 20):].mean()
 
-    def make_guess(self, y, x):
+    a = val_init - val_fin
 
-        length = len(y)
-        val_init = y[0:round(length / 20)].mean()
-        val_fin = y[-round(length / 20):].mean()
+    c = val_fin
 
-        a = val_init - val_fin
+    # find index where data has fallen to 1/e of init value
+    idx = (np.abs(y - a / np.e - c)).argmin()
+    # guess b as e^(-1/x[idx]):
+    b = np.e ** (-1 / x[idx])
 
-        c = val_fin
-
-        # find index where data has fallen to 1/e of init value
-        idx = (np.abs(y - a / np.e - c)).argmin()
-        # guess b as e^(-1/x[idx]):
-        b = np.e ** (-1 / x[idx])
-
-        return [a, b, c]
+    return [a, b, c]
 
 
-class RabiT1Guess(Guess):
+def cosine(y, x):
+    """Guess for f(x) = a * cos(wx + p) + c"""
+    c = y.mean()
 
-    """Guess for f(x) = e^(-x/b) cos^2(wx/2 + p)"""
+    a = (y.max() - y.min()) / 2
 
-    def make_guess(self, y, x):
+    # Get initial guess for frequency from a fourier transform
+    yhat = fftpack.rfft(y - y.mean())
+    idx = (yhat ** 2).argmax()
+    freqs = fftpack.rfftfreq(len(x), d=(x[1] - x[0]) / (2 * np.pi))
+    w = freqs[idx]
 
-        # guess b as point half way point in data
-        b = x[round(len(x) / 2)]
-
-        # Get initial guess for frequency from a fourier transform
-        yhat = fftpack.rfft(y - y.mean())
-        idx = (yhat ** 2).argmax()
-        freqs = fftpack.rfftfreq(len(x), d=(x[1] - x[0]) / (2 * np.pi))
-        w = freqs[idx] * 2
-
-        return [b, w]
-
-
-class CosineGuess(Guess):
-
-    """Guess for f(x) = a * cos(wx + p) + b"""
-
-    def make_guess(self, y, x):
-
-        b = y.mean()
-
-        a = y.max() - y.min()
-
-        # Get initial guess for frequency from a fourier transform
-        yhat = fftpack.rfft(y - y.mean())
-        idx = (yhat ** 2).argmax()
-        freqs = fftpack.rfftfreq(len(x), d=(x[1] - x[0]) / (2 * np.pi))
-        w = freqs[idx]
-
+    if (y[0] - c) / a > 1:
         p = 0
+    elif (y[0] - c) / a < -1:
+        p = np.pi
+    else:
+        p = np.arccos((y[0] - c) / a)
 
-        return [a, w, p, b]
+    return [a, w, p, c]
+
+
+def gaussian(y, x):
+    """Guess for f(x) = a/(sigma*sqrt(2pi)) * e^( (1/2)*((x-mu)/sigma))^2 )"""
+    # guess m to be x-value for peak
+    peak_index = np.argmax(y)
+    m = x[peak_index]
+
+    # find FWHM
+    y_half_max = y[peak_index] / 2
+    l_index = np.argmin(np.abs(y[:peak_index] - y_half_max))
+    r_index = np.argmin(np.abs(y[peak_index:] - y_half_max))
+    fwhm = (x[peak_index:][r_index] - x[:peak_index][l_index])
+
+    # find sigma from FWHM = 2*sigma * sqrt(2ln2) = 2.35*sigma
+    s = fwhm / 2.35
+
+    # guess scaling factor to be 1
+    a = 1
+
+    return [a, s, m]

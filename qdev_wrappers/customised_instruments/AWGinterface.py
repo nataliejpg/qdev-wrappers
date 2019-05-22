@@ -117,3 +117,30 @@ class AWG5014Interface(AWGInterface):
             else:
                 goto_element = 0
             self.awg.set_sqel_goto_target_index(lres[0], goto_element)
+
+
+class Abaco4DSPInterface(AWGInterface):
+    def __init__(self, awg):
+        self.awg = awg
+        self.forged_sequence = None
+
+    def upload(self, forged_sequence: ForgedSequenceType):
+        self.awg.make_and_send_awg_file(
+            forged_sequence)
+        self.awg.load_waveform_from_file(self.awg.FILENAME)
+        self.awg.run()
+
+    def repeat_full_sequence(self):
+        # AWG only has sequence mode, so setting it to sequence mode is not necessary
+        pass
+
+    def get_SR(self):
+        return 1e9
+
+    def set_repeated_element(self, index):
+        raise NotImplementedError('Abaco 4DSP awg does not support element mode')
+
+    def set_repeated_element_series(self, start_index, stop_index):
+        raise NotImplementedError('Abaco 4DSP awg does not support element mode')
+
+
