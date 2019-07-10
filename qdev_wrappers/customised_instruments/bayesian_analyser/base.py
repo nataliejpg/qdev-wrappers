@@ -36,7 +36,7 @@ class BayesianAnalyser(Instrument):
                 param + '_variance',
                 vals=vals.Numbers(),
                 label=paraminfo.get('label',
-                                    paramname.replace('_', ' ').title()), + ' Variance',
+                                    paramname.replace('_', ' ').title()) + ' Variance',
                 unit=paraminfo['unit'] + '^2' if 'unit' in paraminfo else None)
         prior_dict = {k: v.get('prior', [0, 1]) for k, v in
                       model._model_parameters.items}
@@ -82,7 +82,7 @@ class BayesianAnalyser(Instrument):
             model_param_variance = self.model_parameters.parameters[model_param_name + '_variance']
             scaled_estimate = model_param_estimates[i] * \
                 self.scaling_values[model_param_name]
-            scaled_var_estimate = covariance_matrix[i, i] * self.scaling_values.[model_param_name]**2
+            scaled_var_estimate = covariance_matrix[i, i] * self.scaling_values[model_param_name]**2
             model_param._save_val(scaled_estimate)
             model_param_variance._save_val(scaled_var_estimate)
         self.num_updates._save_val(self.num_updates() + 1)
