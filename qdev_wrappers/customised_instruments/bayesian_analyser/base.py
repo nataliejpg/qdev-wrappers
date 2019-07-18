@@ -20,8 +20,8 @@ class BayesianAnalyser(Instrument):
                            set_cmd=None,
                            vals=vals.Ints())
         self.add_parameter(name='num_updates',
-                           set_cmd=False,
-                           initial_value=0)
+                           set_cmd=False)
+        self.num_updates._save_val(0)
         self._model = model
         model_parameters = InstrumentChannel(self, 'model_parameters')
         self.add_submodule('model_parameters', model_parameters)
@@ -33,17 +33,17 @@ class BayesianAnalyser(Instrument):
                                     paramname.replace('_', ' ').title()),
                 unit=paraminfo.get('unit', None))
             self.model_parameters.add_parameter(
-                param + '_variance',
+                paramname + '_variance',
                 vals=vals.Numbers(),
                 label=paraminfo.get('label',
                                     paramname.replace('_', ' ').title()) + ' Variance',
                 unit=paraminfo['unit'] + '^2' if 'unit' in paraminfo else None)
         prior_dict = {k: v.get('prior', [0, 1]) for k, v in
-                      model._model_parameters.items}
+                      model._model_parameters.items()}
         if prior_limits is not None:
             prior_dict.update(prior_limits)
         distrs = [UniformDistribution(val) for val in prior_dict.values()]
-        self._prior = PostselectedDistribution(ProductDistribution(*distrs))
+        self._prior = PostselectedDistribution(ProductDistribution(*distrs), model)
         metadata = {'method': 'BayesianInferrence',
                     'name': name,
                     'model_parameters': {},
@@ -62,8 +62,8 @@ class BayesianAnalyser(Instrument):
     @property
     def scaling_values(self):
         scaling_dict = {}
-        scaling_dict.update({m: v['scaling_value'] for m in self.metadata['model_parameters']})
-        scaling_dict.update({e: v['scaling_value'] for e in self.metadata['experiment_parameters']})
+        scaling_dict.update({m: v['scaling_value'] for m, v in self.metadata['model_parameters'].items()})
+        scaling_dict.update({e: v['scaling_value'] for e, v in self.metadata['experiment_parameters'].items()})
         return scaling_dict
 
     def update(self, measured_value, **experiment_values):
@@ -77,7 +77,7 @@ class BayesianAnalyser(Instrument):
         self._updater.update(measured_value, expparams)
         model_param_estimates = self._updater.est_mean()
         covariance_matrix = self._updater.est_covariance_mtx()
-        for i, model_param_name in enumerate(self.model.modelparam_names):
+        for i, model_param_name in enumerate(self._model.modelparam_names):
             model_param = self.model_parameters.parameters[model_param_name]
             model_param_variance = self.model_parameters.parameters[model_param_name + '_variance']
             scaled_estimate = model_param_estimates[i] * \
@@ -88,17 +88,26 @@ class BayesianAnalyser(Instrument):
         self.num_updates._save_val(self.num_updates() + 1)
 
     def reset_updater(self):
-        del self._updater
+        try:
+            del self._updater
+        except AttributeError:
+            pass
         self._updater = SMCUpdater(
-            self.model, self.num_particles(), deepcopy(self._prior))
-        self.num_updates.save_val(0)
+            self._model, self.num_particles(), deepcopy(self._prior))
+        self.num_updates._save_val(0)
 
     def _check_exp_values(self, **experiment_values):
-        if len(experiment_values) != len(self.model.expparams_dtype):
+        if len(experiment_values) != len(self._model.expparams_dtype):
             raise RuntimeError(
                 'Must specify a setpoint value for all expparams of the model. '
                 'Expected: {} got {}'.format(len(self.model.expparams_dtype),
                                              len(experiment_values)))
+
+    def evaluate(self, **experiment_values):
+        kwargs = {n: v() for n, v in self.model_parameters.parameters.items()}
+        kwargs['np'] = np
+        kwargs.update(experiment_values)
+        return eval(self._model._likelihood_function['np'], kwargs)
 
     def simulate_experiment(self, **experiment_values):
         self._check_exp_values(**experiment_values)
@@ -108,8 +117,8 @@ class BayesianAnalyser(Instrument):
             n_experiments *= len(setpoint_value_arr)
             experiment_values[exp_param_name] = setpoint_value_arr
         expparams = np.empty((n_experiments),
-                             dtype=self.model.expparams_dtype)
-        modelparams = np.empty((1, len(self.model.modelparam_names)))
+                             dtype=self._model.expparams_dtype)
+        modelparams = np.empty((1, len(self._model.modelparam_names)))
         exp_value_combinations = product(
             *[v for v in experiment_values.values()])
         exp_param_names = experiment_values.keys()
@@ -118,8 +127,8 @@ class BayesianAnalyser(Instrument):
                 scaled_param_val = combination[j] / \
                     self.scaling_values[exp_param_name]
                 expparams[i][exp_param_name] = scaled_param_val
-        for i, model_param_name in enumerate(self.model.modelparam_names):
+        for i, model_param_name in enumerate(self._model.modelparam_names):
             scaled_param_val = self.model_parameters.parameters[model_param_name] / \
                 self.scaling_values[model_param_name]
             modelparams[0, i] = scaled_param_val
-        return self.model.simulate_experiment(modelparams, expparams, repeat=1)
+        return self._model.simulate_experiment(modelparams, expparams, repeat=1)

@@ -1,19 +1,23 @@
 import qinfer as qi
 import numpy as np
+import numpy as np
 
 
 class BasicModel(qi.FiniteOutcomeModel):
     def __init__(self, model_parameters, experiment_parameters,
-                 likelihood_function, n_outcomes=2):
+                 likelihood_function):
         self._model_parameters = model_parameters
         self._experiment_parameters = experiment_parameters
         self._likelihood_function = likelihood_function
-        self._n_outcomes = n_outcomes
         super().__init__()
 
     @property
     def n_modelparams(self):
         return len(self._model_parameters)
+
+    @property
+    def is_n_outcomes_constant(self):
+        return True
 
     @property
     def modelparam_names(self):
@@ -24,19 +28,23 @@ class BasicModel(qi.FiniteOutcomeModel):
         return [(k, 'float') for k in self._experiment_parameters.keys()]
 
     def n_outcomes(self, modelparams):
-        return self._n_outcomes
+        return 2
 
     def are_models_valid(self, modelparams):
         return np.all(modelparams >= 0, axis=1)
 
     def likelihood(self, outcomes, modelparams, expparams):
-        modelparam_vals = modelparams.T[:, :, None]
-        kwargs = dict.zip(self.modelparam_names, modelparam_vals)
+        # modelparams shape (n_models, n_modelparameters)
+        # expparams shape (n_experiments, n_expparameters)
+        modelparam_vals = modelparams.T[:, :, np.newaxis] #(n_modelparameters, n_models, 1)
+        expparam_vals = expparams.T #(n_expparameters, n_experiments)
+        kwargs = dict(zip(self.modelparam_names, modelparam_vals)) #(n_models, 1)
         kwargs.update({k: expparams[k]
-                       for k in self._experiment_parameters.keys()})
-        pr0 = np.empty((m.shape[0] for m in modelparams))
+                       for k in self._experiment_parameters.keys()}) #(n_experiments)
+        kwargs['np'] = np
+        pr0 = np.empty((modelparams.shape[0], expparams.shape[0])) #(n_models, n_experiments)
         pr0[:, :] = eval(self._likelihood_function['np'], kwargs)
-        return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
+        return self.pr0_to_likelihood_array(outcomes, pr0)
 
 
 class BasicRabiModel(BasicModel):
