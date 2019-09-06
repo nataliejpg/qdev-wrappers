@@ -9,14 +9,15 @@ from qdev_wrappers.fitting.plotting import plot_fit_by_id
 from qdev_wrappers.fitting.helpers import organize_exp_data, make_json_metadata
 
 
-def fit_by_id(data_run_id, fitter,
-              dependent_parameter_name: str,
-              *independent_parameter_names: str,
+def fit_by_id(data_run_id: int,
+              *fitters,
+              converter=None,
               plot=True,
               save_plots=True,
               show_variance=True,
               show_initial_values=True,
-              **kwargs):
+              **parameter_mappings):
+
     """
     Given the run_id of a dataset, a fitter and the parameters to fit to
     performs a fit on the data and saves the fit results in a separate dataset.
@@ -42,6 +43,39 @@ def fit_by_id(data_run_id, fitter,
         colorbar (matplotlib colorbar): colorbar of 2d heatmap plot if
             generated, otherwise None
     """
+
+    # find readout fidelity info
+    if fidelity_run_id is not None:
+        fidelity_info = fidelity_info_from_run_id(fidelity_run_id)
+        angle = fidelity_info.angle * np.pi / 180
+        decision_val = fidelity_info.tmp_bins[fidelity_info.max_separation_index]
+
+        converter = Projector()
+        meas_parm_names = converter.metadata['input_data']
+    else:
+        meas_parm_names = list(
+            bayesian_analysers[0].metadata['measurement_parameters'].keys())
+    mapped_meas_names = [parameter_mappings.get(n, n) for n in meas_parm_names]
+
+    # load and organize data
+    exp_data = load_by_id(data_run_id)
+    measurement, experiment, data_indices = organize_exp_data(
+        exp_data, *mapped_meas_names)
+
+    # project data
+    if fidelity_run_id is not None:
+        converter_input = [measurement[p]['data'] for p in mapped_meas_names]
+        projected_measurement = converter.convert(*converter_input, angle,
+                                                  decision_value=decision_val,
+                                                  real_imag=True)
+        state_data = projected_measurement['qubit_state']['data']
+
+
+
+
+
+
+
     exp_data = load_by_id(data_run_id)
     dependent, independent, setpoints = organize_exp_data(
         exp_data, dependent_parameter_name, *independent_parameter_names)
