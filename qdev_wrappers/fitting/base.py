@@ -14,7 +14,9 @@ def strip(d):
     new_d = deepcopy(d)
     for v in new_d.values():
         v.pop('label', None)
-        v.pop('unit')
+        v.pop('unit', None)
+        v.pop('vals', None),
+        v.pop('initial_value', None)
     return new_d
 
 

@@ -78,7 +78,7 @@ class LeastSquaresBase(AnalyserBase):
                   **dict(zip(fit_params, fit_values))}
         return eval(self.metadata['function']['np'], kwargs)
 
-    def analyse(self, measured, experiment, initial_values=None, 
+    def analyse(self, measured, experiment, initial_values=None,
                 r2_limit=None, variance_limited=False,):
         """
         Performs a fit based on a measurement and using the evaluate function.
