@@ -13,6 +13,7 @@ import qinfer as qi
 from qdev_wrappers.analysis.base import AnalyserBase, AnalysisParameter
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+from qcodes.dataset.plotting import _rescale_ticks_and_units
 # from qcodes.dataset.plotting import _rescale_ticks_and_units, plot_on_a_plain_grid
 
 # TODO: allow other measurement_parameters
@@ -109,11 +110,11 @@ class BayesianAnalyserBase(AnalyserBase):
             v['prior'] = v.get('prior', [0, 1])
             v['scaling_value'] = v.get('scaling_value', 1)
             v['label'] = v.get('label', k.replace('_', ' ').title())
-            v['unit'] = v.get('label', None)
+            v['unit'] = v.get('unit', '')
         for k, v in self.EXPERIMENT_PARAMETERS.items():
             v['scaling_value'] = v.get('scaling_value', 1)
             v['label'] = v.get('label', k.replace('_', ' ').title())
-            v['unit'] = v.get('label', None)
+            v['unit'] = v.get('unit', '')
 
         self.add_parameter(name='num_particles',
                            initial_value=10000,
@@ -175,10 +176,12 @@ class BayesianAnalyserBase(AnalyserBase):
         return scaling_dict
 
     def _set_prior_start(self, paramname, val):
-        self.metadata['model_parameters'][paramname]['prior'][0] = val
+        scaled_val = val / self.scaling_values[paramname]
+        self.metadata['model_parameters'][paramname]['prior'][0] = scaled_val
 
     def _set_prior_stop(self, paramname, val):
-        self.metadata['model_parameters'][paramname]['prior'][1] = val
+        scaled_val = val / self.scaling_values[paramname]
+        self.metadata['model_parameters'][paramname]['prior'][1] = scaled_val
 
     def reset_prior(self):
         try:
@@ -246,34 +249,71 @@ class BayesianAnalyserBase(AnalyserBase):
         self.num_updates._save_val(self.num_updates() + 1)
 
 
-def plot_model_param(mean, var, y_label=None, title=None):
-    fig = plt.figure()
-    gs = gridspec.GridSpec(nrows=2, ncols=1, hspace=0,
-                           height_ratios=[1, 1])
+# def plot_model_param(mean, var, p_label=None, v_label=None, title=None):
+#     fig = plt.figure()
+#     gs = gridspec.GridSpec(nrows=2, ncols=1, hspace=0,
+#                            height_ratios=[1, 1])
 
+#     ax1 = fig.add_subplot(gs[0])
+#     ax2 = fig.add_subplot(gs[1], sharex=ax1)
+#     num = np.arange(len(mean))
+#     num_label = {'label': 'Shot Number', 'unit': '', 'data': num}
+#     ax1.plot(num, mean, label='Mean', color='C0')
+#     ax1.legend()
+#     ax1.fill_between(num, mean - np.sqrt(var),
+#                      mean + np.sqrt(var), alpha=0.3, facecolor='g')
+#     if isinstance(p_label, dict):
+#         ax1.set_ylabel(f"{p_label['label']} ({p_label['unit']})")
+#         p_label['data'] = mean
+#         data_lst = [num_label, p_label]
+#         _rescale_ticks_and_units(ax1, data_lst)
+#     elif isinstance(p_label, str):
+#         ax1.set_ylabel(p_label)
+
+#     ax2.plot(num, var, label='Variance', color='g')
+#     ax2.set_xlabel(num_label['label'])
+#     ax2.legend()
+#     if isinstance(v_label, dict):
+#         ax2.set_ylabel(f"{v_label['label']} ({v_label['unit']})")
+#         v_label['data'] = var
+#         data_lst = [num_label, v_label]
+#         _rescale_ticks_and_units(ax2, data_lst)
+#     elif isinstance(v_label, str):
+#         ax2.set_ylabel(v_label)
+#     if title is not None:
+#         plt.suptitle(title)
+#     fig.set_size_inches(5, 7)
+#     return fig
+
+
+def plot_model_param(mean, var, p_label=None, title=None):
+    fig = plt.figure()
+    gs = gridspec.GridSpec(nrows=1, ncols=1)
     ax1 = fig.add_subplot(gs[0])
-    ax2 = fig.add_subplot(gs[1], sharex=ax1)
     num = np.arange(len(mean))
-    ax1.plot(num, mean, label='Mean', color='C0')
-    ax1.legend()
+    num_label = {'label': 'Shot Number', 'unit': '', 'data': num}
+    ax1.plot(num, mean, color='C0')
+    # legend = ax1.legend()
     ax1.fill_between(num, mean - np.sqrt(var),
                      mean + np.sqrt(var), alpha=0.3, facecolor='g')
-    if y_label is not None:
-        ax1.set_ylabel(y_label)
-
-    ax2.plot(num, var, label='Variance', color='g')
-    ax2.set_ylabel('Variance')
-    ax2.set_xlabel('Shot Number')
-    if title is not None:
-        plt.suptitle(title)
-    ax2.legend()
+    if isinstance(p_label, dict):
+        ax1.set_ylabel(f"{p_label['label']} ({p_label['unit']})")
+        p_label['data'] = mean
+        data_lst = [num_label, p_label]
+        _rescale_ticks_and_units(ax1, data_lst)
+    elif isinstance(p_label, str):
+        ax1.set_ylabel(p_label)
+    ax1.set_xlabel(num_label['label'])
+    # if title is not None:
+    #     plt.suptitle(title)
     return fig
 
 
-def plot_estimate(estimate=None, averaged_projected_data=None,
-                  projected_data=None, title=None, **setpoints):
+def plot_estimate(estimate=None, averaged_state_data=None,
+                  projected_data=None, title=None, labels=None,
+                  **setpoints):
     plottables = {'estimate': estimate,
-                  'averaged_projected_data': averaged_projected_data,
+                  'averaged_state_data': averaged_state_data,
                   'projected_data': projected_data}
     for k, v in plottables.items():
         if v is None:
@@ -300,25 +340,37 @@ def plot_estimate(estimate=None, averaged_projected_data=None,
     lines = []
     for i, (p, vals) in enumerate(plottables.items()):
         if p == 'estimate':
-            axes[i].set_ylabel('P(0)')
+            ylabel = 'P(0)'
             label = 'Estimated ground state probability'
             c = 'b'
-        elif p == 'averaged_projected_data':
-            axes[i].set_ylabel('a.u')
-            label = 'Averaged projected cavity response'
+        elif p == 'averaged_state_data':
+            ylabel = 'P(0)'
+            label = 'Averaged ground state probability'
             c = 'g'
         else:
-            axes[i].set_ylabel('a.u')
+            ylabel = 'Cav'
             label = 'Projected cavity response'
             c = 'm'
+        sorted_vals = [x for _,x in sorted(zip(setpoint_arr,vals))]
+        axes[i].set_ylabel(ylabel)
         if i == len(plottables) - 1:
-            axes[i].set_xlabel(setpoint_name.title())
-        lines.extend(axes[i].plot(setpoint_arr, vals, c, label=label))
+            if labels is not None:
+                x_label = f"{labels[setpoint_name]['label']} ({labels[setpoint_name]['unit']})"
+            else:
+                x_label = setpoint_name.title()
+            axes[i].set_xlabel(x_label)
+        lines.extend(axes[i].plot(sorted(setpoint_arr), sorted_vals, c, label=label))
+        if labels is not None:
+            setpoint_label = labels[setpoint_name]
+            setpoint_label['data'] = setpoint_arr
+            vals_label = {'label': ylabel, 'unit': '', 'data': vals}
+            data_lst = [setpoint_label, vals_label]
+            _rescale_ticks_and_units(axes[i], data_lst)
     if title is not None:
         plt.suptitle(title)
-    fig.legend(handles=lines,
+    legend = fig.legend(handles=lines,
                bbox_to_anchor=(0.95, 0.5), loc='upper left')
-    return fig
+    return fig, legend
 
 
 def plot_prior_posterior(prior, prior_setpoints,
@@ -327,57 +379,47 @@ def plot_prior_posterior(prior, prior_setpoints,
     f = plt.figure()
     plt.plot(prior_setpoints, prior, label='prior')
     plt.plot(posterior_setpoints, posterior, label='posterior')
-    plt.legend()
-    if x_label is not None:
+    legend = plt.legend()
+    if isinstance(x_label, dict):
+        plt.xlabel(f"{x_label['label']} ({x_label['unit']})")
+        data_lst = [{**x_label, 'data': prior_setpoints},
+                    {'label': 'distr', 'unit': '', 'data': prior}]
+        _rescale_ticks_and_units(f.axes[0], data_lst)
+    elif isinstance(x_label, str):
         plt.xlabel(x_label)
     if title is not None:
         plt.suptitle(title)
 
+    return f, legend
 
-def plot_bayesian_analysis(data, metadata, title=None):
+
+def plot_bayesian_analysis(data, metadata, title=None, labels=None):
     figs = []
+    if labels is None:
+        labels = {}
     for name in metadata['model_parameters'].keys():
+        v_name = name + '_variance'
         p_data = data.pop(name)
         v_data = data.pop(name + '_variance')
-        figs.append(plot_model_param(p_data, v_data, y_label=name, title=title))
+        p_label = labels.get(name, {'label': name, 'unit': ''})
+        # v_label = {'label': 'Variance', 'unit': ''}
+        figs.append(plot_model_param(p_data, v_data, p_label=p_label,
+                                     title=title))
         prior, posterior = data.pop(name + '_posterior_marginal')
         prior_setpoints, posterior_setpoints = data.pop(name + '_posterior_marginal_setpoints')
+        x_label = labels.get(name, name)
         figs.append(plot_prior_posterior(prior, prior_setpoints,
                                          posterior, posterior_setpoints,
-                                         x_label=name, title=title))
+                                         x_label=x_label, title=title))
 
     est = data.pop('estimate', None)
-    ave = data.pop('averaged_projected_data', None)
+    ave = data.pop('averaged_state_data', None)
     proj = data.pop('projected_data', None)
     qubit_state = data.pop('qubit_state', None)
     if any([i is not None for i in [est, ave, proj]]):
-        figs.append(plot_estimate(est, ave, proj, title=title,
-                                  **data))
+        try:
+            figs.append(plot_estimate(est, ave, proj, title=title,
+                                      labels=labels, **data))
+        except RuntimeError:
+            pass
     return figs
-
-
-
-    # def simulate_experiment(self, **experiment_values):
-    #     self._check_experiment_parameters(**experiment_values)
-    #     n_experiments = 1
-    #     for exp_param_name, exp_param_value in experiment_values.items():
-    #         exp_value_arr = np.array([exp_param_value]).flatten()
-    #         n_experiments *= len(setpoint_value_arr)
-    #         experiment_values[exp_param_name] = setpoint_value_arr
-    #     expparams = np.empty((n_experiments),
-    #                          dtype=self._model.expparams_dtype)
-    #     modelparams = np.empty((1, len(self._model.modelparam_names)))
-    #     exp_value_combinations = product(
-    #         *[v for v in experiment_values.values()])
-    #     exp_param_names = experiment_values.keys()
-    #     for i, combination in enumerate(exp_value_combinations):
-    #         for j, exp_param_name in enumerate(exp_param_names):
-    #             scaled_param_val = combination[j] / \
-    #                 self.scaling_values[exp_param_name]
-    #             expparams[i][exp_param_name] = scaled_param_val
-    #     for i, model_param_name in enumerate(self._model.modelparam_names):
-    #         scaled_param_val = self.model_parameters.parameters[
-    #             model_param_name] / self.scaling_values[model_param_name]
-    #         modelparams[0, i] = scaled_param_val
-    #     return self._model.simulate_experiment(modelparams, expparams,
-    #                                            repeat=1)

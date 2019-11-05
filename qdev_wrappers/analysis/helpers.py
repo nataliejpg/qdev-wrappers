@@ -2,6 +2,8 @@ import numpy as np
 import json
 from qcodes.dataset.data_export import load_by_id
 from qcodes.dataset.data_set import DataSet
+import qcodes as qc
+import os
 
 
 def make_json_metadata(datasets, analysers, mappings, setpoints):
@@ -37,6 +39,16 @@ def get_experiment_data(dataset, parm_names, mappings):
         mapped_name = mappings.get(name, name)
         data.update(d[mapped_name])
     return data
+
+
+def get_labeling_dict(analyser):
+    d =  {p.name: {'label': p.label,
+                   'unit': p.unit} for p in analyser.all_parameters}
+    d.update({p: {'label': v.get('label', p),
+                  'unit': v.get('unit', '')} for p, v in analyser.EXPERIMENT_PARAMETERS.items()})
+    d.update({p: {'label': v.get('label', p),
+                  'unit': v.get('unit', '')} for p, v in analyser.MEASUREMENT_PARAMETERS.items()})
+    return d
 
 
 def refine_data_dict(data, setpoints, mappings):
@@ -99,6 +111,26 @@ def organize_experiment_data(dataset, analyser, setpoints, mappings,
     if scrape:
         data = scrape_data_dict(data, meas_names + exp_names)
     return data
+
+def save_analysis_figs(figs, exp_name=None, sample_name=None,
+                       run_id=None, name_extension=None):
+    run_id = run_id or 0
+    mainfolder = qc.config.user.mainfolder
+    if exp_name and sample_name:
+        storage_dir = os.path.join(mainfolder, f'{sample_name}_{exp_name}')
+        os.makedirs(storage_dir, exist_ok=True)
+
+    filename = f'{run_id}_analysis'
+    if name_extension is not None:
+        filename += f'_{name_extension}'
+    for i, fig in enumerate(figs):
+        f_filename = filename + f'_{i}'
+        full_path = os.path.join(storage_dir, f_filename + '.png')
+        if isinstance(fig, tuple):
+            fig[0].savefig(full_path, dpi=500, bbox_extra_artists=(fig[1],),
+                           bbox_inches='tight')
+        else:
+            fig.savefig(full_path, dpi=500, bbox_inches='tight')
 
 
 # def get_all_data(data):

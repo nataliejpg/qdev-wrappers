@@ -109,12 +109,12 @@ def plot_scatter(real, imaginary, pi_pulse_present, title=None):
         color='b', label='Excited State\n({:.1e}, {:.1e})'.format(
             np.mean(p_real), np.mean(p_imaginary)))
 
-    fig.legend(handles=[np_patch, p_patch],
+    legend = fig.legend(handles=[np_patch, p_patch],
                bbox_to_anchor=(0.95, 0.5), loc='upper left')
     if title is not None:
         fig.suptitle(title)
     fig.set_size_inches(5, 7)
-    return fig
+    return fig, legend
 
 
 def _plot_histogram(axes, np_projected, p_projected, bin_edges,
@@ -155,10 +155,10 @@ def plot_hist_cumsum(np_projected, p_projected, bin_edges, decision_value,
     p_patch = mpatches.Patch(color='b', label='Excited State')
     if title is not None:
         fig.suptitle(title)
-    fig.legend(handles=[np_patch, p_patch, line],
+    legend = fig.legend(handles=[np_patch, p_patch, line],
                bbox_to_anchor=(0.95, 0.5), loc='upper left')
     fig.set_size_inches(5, 7)
-    return fig
+    return fig, legend
 
 
 def plot_readout_fidelity(data, title=None):
