@@ -77,24 +77,3 @@ def cosine(y, x):
         p = np.arccos((y[0] - c) / a)
 
     return [a, w, p, c]
-
-
-def gaussian(y, x):
-    """Guess for f(x) = a/(sigma*sqrt(2pi)) * e^( (1/2)*((x-mu)/sigma))^2 )"""
-    # guess m to be x-value for peak
-    peak_index = np.argmax(y)
-    m = x[peak_index]
-
-    # find FWHM
-    y_half_max = y[peak_index] / 2
-    l_index = np.argmin(np.abs(y[:peak_index] - y_half_max))
-    r_index = np.argmin(np.abs(y[peak_index:] - y_half_max))
-    fwhm = (x[peak_index:][r_index] - x[:peak_index][l_index])
-
-    # find sigma from FWHM = 2*sigma * sqrt(2ln2) = 2.35*sigma
-    s = fwhm / 2.35
-
-    # guess scaling factor to be 1
-    a = 1
-
-    return [a, s, m]

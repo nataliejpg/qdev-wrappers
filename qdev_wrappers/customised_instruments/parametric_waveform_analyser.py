@@ -423,16 +423,16 @@ class ParametricWaveformAnalyser(Instrument):
         chan.demod_freq(abs(demod_ch.demodulation_frequency()))
         if demod_type in 'm':
             chan.demod_type('magnitude')
-            chan.data.label = 'Cavity Magnitude Response'
+            chan.data.label = f'Cavity Magnitude Response {demod_ch_index+1}'
         elif demod_type == 'p':
             chan.demod_type('phase')
-            chan.data.label = 'Cavity Phase Response'
+            chan.data.label = f'Cavity Phase Response {demod_ch_index+1}'
         elif demod_type == 'i':
             chan.demod_type('imag')
-            chan.data.label = 'Cavity Imaginary Response'
+            chan.data.label = f'Cavity Imaginary Response {demod_ch_index+1}'
         elif demod_type == 'r':
             chan.demod_type('real')
-            chan.data.label = 'Cavity Real Response'
+            chan.data.label = f'Cavity Real Response {demod_ch_index+1}'
         else:
             raise NotImplementedError(
                 'only magnitude, phase, imaginary and real currently '

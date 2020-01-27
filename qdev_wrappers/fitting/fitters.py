@@ -18,14 +18,14 @@ class MinimumFitter(Fitter):
                          method_description='SimpleMinimum',
                          function_description=function_metadata)
 
-    def fit(self, measured_values, *experiment_values):
+    def fit(self, measured_values, experiment_values):
         """
         Find minimum value and location, update fit_parameters and
         save succcess as yay.
         """
-        self._check_fit(measured_values, *experiment_values)
+        self._check_fit(measured_values, experiment_values)
         min_index = np.argmin(measured_values)
-        self.fit_parameters.location._save_val([values[min_index] for values in experiment_values])
+        self.fit_parameters.location._save_val(experiment_values[min_index])
         self.fit_parameters.value._save_val(measured_values[min_index])
         self.success._save_val(1)
 
@@ -62,6 +62,24 @@ class ExpDecayBaseFitter(LeastSquaresFitter):
         super().__init__(name, fit_parameters, function_metadata)
         self.guess = guess.power_decay
 
+class BenchmarkingFitter(LeastSquaresFitter):
+    """
+    Least Squares Fitter which fits to an exponential using the equation
+        a * p**nx + b
+    and given the measured results and the values of x. Useful for fitting
+    benchmarking results.
+    """
+    def __init__(self, name='BenchmarkingFitter', n=1):
+        fit_parameters = {'a': {'label': '$a$', 'unit': 'V'},
+                          'p': {'label': '$p$'},
+                          'b': {'label': '$b$', 'unit': 'V'}}
+        function_metadata = {'str': r'$f(x) = A p^nx + B$',
+                             'np': f'a * p**({n}*x) + b'}
+        super().__init__(name, fit_parameters, function_metadata)
+        self.guess = guess.power_decay
+
+    def set_n(self, val):
+        self.metadata['function']['np'] =  f'a * p**({val}*x) + b'
 
 class CosFitter(LeastSquaresFitter):
     """
@@ -100,19 +118,3 @@ class ExpDecaySinFitter(LeastSquaresFitter):
             'np': 'a * np.exp(-x / T) * np.sin(w * x + p) + c'}
         super().__init__(name, fit_parameters, function_metadata)
         self.guess = guess.exp_decay_sin
-
-
-class GaussianFitter(LeastSquaresFitter):
-    """
-    Least Squares Fitter which fits to a gaussian using the equation
-        a / (sigma*np.sqrt(2*np.pi)) * np.e**(-0.5*((x-mu)/sigma)**2)
-    and given the measured results and the values of x.
-    """
-    def __init__(self, name='Gaussian'):
-        fit_parameters = {'a': {'label': '$a$'},
-                          's': {'label': '$\sigma$'},
-                          'm': {'label': '$\mu$'}}
-        function_metadata = {'str': r'$f(x) = a/(\sigma*\sqrt(2\pi)) * \e^( (1/2)*((x-\mu)/\sigma))^2 )$',
-                             'np': 'a / (s*np.sqrt(2*np.pi)) * np.e**(-0.5*((x-m)/s)**2)'}
-        super().__init__(name, fit_parameters, function_metadata)
-        self.guess = guess.gaussian

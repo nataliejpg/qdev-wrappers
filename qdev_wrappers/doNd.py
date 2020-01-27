@@ -13,7 +13,7 @@ from qcodes.dataset.data_set import load_by_id
 Task = namedtuple('Task', 'type callable')
 
 
-def make_filename(run_id, index=None):
+def make_filename(run_id, index=None, analysis=False, extension=None):
     dataset = load_by_id(run_id)
     experiment = load_experiment(dataset.exp_id)
     db_path = Config()['core']['db_location']
@@ -23,10 +23,16 @@ def make_filename(run_id, index=None):
     print(plot_folder)
     os.makedirs(plot_folder, exist_ok=True)
     if index is None:
-        filename = '{}.png'.format(run_id)
+        filename = '{}'.format(run_id)
     else:
-        filename = '{}_{}.png'.format(run_id, index)
-    plot_path = os.path.join(plot_folder, filename)
+        filename = '{}_{}'.format(run_id, index)
+    if extension is not None:
+        filename += '_{}'.format(extension)
+    filename += '.png'
+    if analysis:
+        plot_path = os.path.join(plot_folder, 'analysis', filename)
+    else:
+        plot_path = os.path.join(plot_folder, filename)
     return plot_path
 
 

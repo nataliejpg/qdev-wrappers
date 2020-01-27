@@ -6,7 +6,8 @@ import json
 import warnings
 import matplotlib.pyplot as plt
 import numpy as np
-from qdev_wrappers.fitting.save_image import save_image
+#from qdev_wrappers.dataset.doNd import save_image
+from qdev_wrappers.doNd import make_filename
 
 
 def plot_least_squares_1d(indept, dept, metadata, title,
@@ -91,7 +92,7 @@ def plot_least_squares_1d(indept, dept, metadata, title,
         textstr = '\n'.join(p_label_list)
     else:
         textstr = '{} \n Unsuccessful fit'.format(
-            fitter.metadata['fitter']['function']['str'])
+            metadata['fitter']['function']['str'])
 
     # add text, axes, labels, title and rescale
     ax.text(1.05, 0.7, textstr, transform=ax.transAxes, fontsize=14,
@@ -194,7 +195,6 @@ def plot_fit_param_1ds(setpoint, fit, metadata, title,
         axes.append(ax)
     return axes
 
-
 def plot_fit_by_id(fit_run_id,
                    show_variance=True,
                    show_initial_values=False,
@@ -239,6 +239,9 @@ def plot_fit_by_id(fit_run_id,
     dept, independent, exp_setpoints = organize_exp_data(
         exp_data, dependent_parameter_name, *independent_parameter_names,
         **setpoint_values)
+    if len(independent[list(independent.keys())[0]]['data']) != len(dept['data']):
+        for k, v in independent.items():
+            independent[k]['data'] = np.array(v['data'][:len(dept['data'])])
     success, fit, variance, initial_values, fit_setpoints, point_vals = organize_fit_data(
         fit_data, **setpoint_values)
 
@@ -349,5 +352,11 @@ def plot_fit_by_id(fit_run_id,
                   'exp_name': fit_data.exp_name,
                   'sample_name': fit_data.sample_name}
         name_extension = '_'.join(['fit'] + [extra_save_text])
-        save_image(axes, name_extension=name_extension, **kwargs)
+        for i, ax in enumerate(axes):
+            ax.figure.savefig(make_filename(fit_data.run_id, i,
+                                            analysis=True, extension=name_extension))
+        #save_image(axes, name_extension=name_extension, **kwargs)
     return axes, colorbar
+
+
+

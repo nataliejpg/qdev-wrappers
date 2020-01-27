@@ -243,6 +243,13 @@ class AbacoTektronixInterface(AWGInterface):
         self._restore_sequence_state()
         self.tek.sequence_pos(1)
 
+    def change_pulse_spacing(self, pulse_spacing):
+        self.upload_to_4dsp = False 
+        self.pulse_spacing = pulse_spacing
+
+        self.upload(self.forged_sequence)
+
+        self.upload_to_4dsp = True
     def get_SR(self):
         # not sure what this should do, since there are two different awgs. Get both, I guess, and then throw an error if they are different? But maybe its okay if they are different... depends what this is used for.
 #        return self.awg.clock_freq()

@@ -2,6 +2,13 @@ import numpy as np
 import json
 
 
+def strip_none(arr):
+    return arr[arr != np.array(None)]
+
+def strip_some(arr, u):
+    return np.array(arr).flatten()[u].flatten()
+    # return arr[arr != np.array(None)]
+
 def make_json_metadata(dataset, fitter, dependent_parameter_name,
                        *independent_parameter_names):
     """
@@ -120,19 +127,19 @@ def organize_exp_data(data, dependent_parameter_name,
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_none(np.array(data.get_data(name)).flatten()[u].flatten())}
         elif name in independent_parameter_names:
             independent[name] = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_none(np.array(data.get_data(name)).flatten()[u].flatten())}
         elif name in setpoints:
             setpoints[name] = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_none(np.array(data.get_data(name)).flatten()[u].flatten())}
     if dependent is None:
         raise RuntimeError(f'{dependent_parameter_name} not found in dataset. '
                            f'Parameters present are {parameters}')
@@ -194,59 +201,64 @@ def organize_fit_data(data, **setpoint_values):
             "in dataset. Parameters present are {parameters}")
 
     # find indices for specified setpoint_values
+    setpoints = {}
     indices = []
     point_values = []
-    for setpoint, value in setpoint_values.items():
-        d = np.array(data.get_data(setpoint)).flatten()
-        nearest_val = value + np.amin(d - value)
-        indices.append(set(np.argwhere(d == nearest_val).flatten()))
-        point_values.append(nearest_val)
-    if len(indices) > 0:
-        u = list(set.intersection(*indices))
-    else:
+    try:
+        success_setpoints = data.get_setpoints('success')
+        for setpoint, value in setpoint_values.items():
+            d = np.array(success_setpoints[setpoint]).flatten()
+            nearest_val = value + np.amin(d - value)
+            indices.append(set(np.argwhere(d == nearest_val).flatten()))
+            point_values.append(nearest_val)
+        if len(indices) > 0:
+            u = list(set.intersection(*indices))
+        else:
+            u = None
+        # populate dictionaries
+        for p in parameters:
+            depends_on = data.paramspecs[p].depends_on.split(', ')
+            for d in depends_on:
+                non_vals = list(setpoint_values.keys()) + ['']
+                if d not in non_vals:
+                    setpoints[d] = None
+    except ValueError:
         u = None
 
-    # populate dictionaries
-    setpoints = {}
-    for p in parameters:
-        depends_on = data.paramspecs[p].depends_on.split(', ')
-        for d in depends_on:
-            non_vals = list(setpoint_values.keys()) + ['']
-            if d not in non_vals:
-                setpoints[d] = None
     fit = {}
     variance = {}
     initial_values = {}
     for name in parameters:
+        none_indices = data.get_data(name)
         if name == 'success':
             success = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_some(data.get_values(name), u)}
         elif name in metadata['fitter']['fit_parameters']:
             fit[name] = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_some(data.get_values(name), u)}
         elif name in metadata['fitter'].get('variance_parameters', []):
             variance[name] = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_some(data.get_values(name), u)}
         elif name in metadata['fitter'].get('initial_value_parameters', []):
             initial_values[name] = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_some(data.get_values(name), u)}
         elif name in setpoints:
             setpoints[name] = {
                 'name': name,
                 'label': data.paramspecs[name].label,
                 'unit': data.paramspecs[name].unit,
-                'data': np.array(data.get_data(name)).flatten()[u].flatten()}
+                'data': strip_some(success_setpoints[name], u)}
 
     return success, fit, variance, initial_values, setpoints, point_values
