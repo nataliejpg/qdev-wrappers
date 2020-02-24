@@ -62,24 +62,6 @@ class ExpDecayBaseFitter(LeastSquaresFitter):
         super().__init__(name, fit_parameters, function_metadata)
         self.guess = guess.power_decay
 
-class BenchmarkingFitter(LeastSquaresFitter):
-    """
-    Least Squares Fitter which fits to an exponential using the equation
-        a * p**nx + b
-    and given the measured results and the values of x. Useful for fitting
-    benchmarking results.
-    """
-    def __init__(self, name='BenchmarkingFitter', n=1):
-        fit_parameters = {'a': {'label': '$a$', 'unit': 'V'},
-                          'p': {'label': '$p$'},
-                          'b': {'label': '$b$', 'unit': 'V'}}
-        function_metadata = {'str': r'$f(x) = A p^nx + B$',
-                             'np': f'a * p**({n}*x) + b'}
-        super().__init__(name, fit_parameters, function_metadata)
-        self.guess = guess.power_decay
-
-    def set_n(self, val):
-        self.metadata['function']['np'] =  f'a * p**({val}*x) + b'
 
 class CosFitter(LeastSquaresFitter):
     """

@@ -184,11 +184,6 @@ class LeastSquaresFitter(Fitter):
         Updates the instrument parameters to record the success and results
         of the fit.
         """
-        try:
-            self._check_fit(measured_values, experiment_values)
-        except RuntimeError:
-            experiment_values = np.array(experiment_values[:len(measured_values)]).astype('float')
-            measured_values = np.array(measured_values).astype('float')
         self._check_fit(measured_values, experiment_values)
         if initial_values is None:
             try:
