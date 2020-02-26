@@ -3,6 +3,7 @@ from lomentum.element import Element
 from lomentum.types import ContextDict, Symbol
 import logging
 import numpy as np
+import math
 from contextlib import contextmanager
 from qcodes import Station, Instrument, ChannelList
 from qcodes.instrument.channel import InstrumentChannel
@@ -561,7 +562,7 @@ class ParametricWaveformAnalyser(Instrument):
                 if tot_samples > max_samples:
                     settings['records'] = math.floor(
                         max_samples / samples_per_rec)
-                    settings['buffers'] = math.ceil(max_samples / records)
+                    settings['buffers'] = math.ceil(max_samples / settings['records'])
                 else:
                     settings['records'] = num
                     settings['buffers'] = 1
