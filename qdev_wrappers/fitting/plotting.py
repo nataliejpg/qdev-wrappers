@@ -1,13 +1,15 @@
 import qcodes as qc
 from qcodes.dataset.data_export import load_by_id
 from qdev_wrappers.fitting.helpers import organize_exp_data, organize_fit_data, load_json_metadata
-from qcodes.dataset.plotting import _rescale_ticks_and_units, plot_on_a_plain_grid
+from qcodes.dataset.plotting import _rescale_ticks_and_units
+from qcodes.dataset.data_export import reshape_2D_data
+from qcodes.dataset.plotting import plot_by_id
+from qdev_wrappers.doNd import make_filename
 import json
 import warnings
 import matplotlib.pyplot as plt
 import numpy as np
-#from qdev_wrappers.dataset.doNd import save_image
-from qdev_wrappers.doNd import make_filename
+# from qdev_wrappers.dataset.doNd import save_image
 
 
 def plot_least_squares_1d(indept, dept, metadata, title,
@@ -60,7 +62,7 @@ def plot_least_squares_1d(indept, dept, metadata, title,
                         num=len(indept['data']) * 10)
         finalkwargs = {'x': x,
                        'np': np,
-                       **{f['name']: f['data'][0] for f in fit.values()}}
+                       **{f['name']: f['data'].values[()] for f in fit}}
         finaly = eval(metadata['fitter']['function']['np'],
                       finalkwargs)
         ax.plot(x, finaly, color='C1', label='fit')
@@ -68,7 +70,7 @@ def plot_least_squares_1d(indept, dept, metadata, title,
             initialkwargs = {}
             for i, name in enumerate(initial_value_paramnames):
                 initialkwargs[fit_paramnames[i]
-                              ] = initial_values[name]['data'][0]
+                              ] = initial_values[i]['data']
             initialkwargs.update(
                 {'x': x,
                  'np': np})
@@ -78,21 +80,21 @@ def plot_least_squares_1d(indept, dept, metadata, title,
         plt.legend()
         p_label_list = [text] if text else []
         p_label_list.append(metadata['fitter']['function']['str'])
-        for i, fpn in enumerate(fit_paramnames):
-            fit_val = fit[fpn]['data'][0]
+        for i, f in enumerate(fit):
+            fit_val = f['data'].values[0]
             if variance is not None:
-                variance_val = variance[variance_paramnames[i]]['data'][0]
+                variance_val = variance[i]['data'].values[0]
                 standard_dev = np.sqrt(variance_val)
                 p_label_list.append('{} = {:.3g} ± {:.3g} {}'.format(
-                    fit[fpn]['label'], fit_val,
-                    standard_dev, fit[fpn]['unit']))
+                    f['label'], fit_val,
+                    standard_dev, f['unit']))
             else:
                 p_label_list.append('{} = {:.3g} {}'.format(
-                    fit[fpn]['label'], fit_val, fit[fpn]['unit']))
+                    f['label'], fit_val, f['unit']))
         textstr = '\n'.join(p_label_list)
     else:
         textstr = '{} \n Unsuccessful fit'.format(
-            metadata['fitter']['function']['str'])
+            fitter.metadata['fitter']['function']['str'])
 
     # add text, axes, labels, title and rescale
     ax.text(1.05, 0.7, textstr, transform=ax.transAxes, fontsize=14,
@@ -136,6 +138,37 @@ def plot_heat_map(x, y, z, title):
     return ax, colorbar
 
 
+def plot_on_a_plain_grid(x, y, z, ax, cax=None, **kwargs):
+    xrow, yrow, z_to_plot = reshape_2D_data(x, y, z)
+    dxs = np.diff(xrow) / 2
+    dys = np.diff(yrow) / 2
+    x_edges = np.concatenate((np.array([xrow[0] - dxs[0]]),
+                              xrow[:-1] + dxs,
+                              np.array([xrow[-1] + dxs[-1]])))
+    y_edges = np.concatenate((np.array([yrow[0] - dys[0]]),
+                              yrow[:-1] + dys,
+                              np.array([yrow[-1] + dys[-1]])))
+    if 'rasterized' in kwargs.keys():
+        rasterized = kwargs.pop('rasterized')
+    else:
+        rasterized = len(x_edges) * len(y_edges) \
+            > qc.config.plotting.rasterize_threshold
+
+    cmap = kwargs.pop('cmap') if 'cmap' in kwargs else None
+
+    colormesh = ax.pcolormesh(x_edges, y_edges,
+                              np.ma.masked_invalid(z_to_plot),
+                              rasterized=rasterized,
+                              cmap=cmap,
+                              **kwargs)
+    if cax is not None:
+        colorbar = ax.figure.colorbar(colormesh, ax=ax, cax=cax)
+    else:
+        colorbar = ax.figure.colorbar(colormesh, ax=ax)
+
+    return ax, colorbar
+
+
 def plot_fit_param_1ds(setpoint, fit, metadata, title,
                        variance=None, initial_values=None):
     """
@@ -160,15 +193,15 @@ def plot_fit_param_1ds(setpoint, fit, metadata, title,
     axes = []
     order = setpoint['data'].argsort()
     xpoints = setpoint['data'][order]
-    fit_paramnames = metadata['fitter']['fit_parameters']
+    # fit_paramnames = metadata['fitter']['fit_parameters']
     variance_paramnames = metadata['fitter'].get('variance_parameters')
     intial_value_paramnames = metadata['fitter'].get(
         'initial_value_parameters')
-    for i, fpn in enumerate(fit_paramnames):
+    for i, f in enumerate(fit):
         fig, ax = plt.subplots(1, 1)
-        ypoints = fit[fpn]['data'][order]
+        ypoints = f['data'].values[order]
         if variance is not None:
-            var = variance[variance_paramnames[i]]['data'][order]
+            var = variance[i]['data'].values[order]
             standard_dev = np.sqrt(var)
             ax.errorbar(xpoints, ypoints,
                         standard_dev, None, 'g.-', label='fitted value')
@@ -178,7 +211,7 @@ def plot_fit_param_1ds(setpoint, fit, metadata, title,
                 transform=ax.transAxes, fontsize=12,
                 verticalalignment='top', bbox={'ec': 'k', 'fc': 'w'})
         if initial_values is not None:
-            ini = initial_values[intial_value_paramnames[i]]['data'][order]
+            ini = initial_values[i]['data'].values[order]
             ax.plot(xpoints, ini, '.-', color='grey', label='initial guess')
             plt.legend()
 
@@ -186,19 +219,22 @@ def plot_fit_param_1ds(setpoint, fit, metadata, title,
         xlabel = setpoint['label'] or setpoint['name']
         xlabel += f" ({setpoint['unit']})"
         ax.set_xlabel(xlabel)
-        ylabel = fit[fpn]['label'] or fit[fpn]['name']
-        ylabel += f" ({fit[fpn]['unit']})"
+        ylabel = f['label'] or f['name']
+        ylabel += f" ({f['unit']})"
         ax.set_ylabel(ylabel)
         ax.set_title(title)
-        data_lst = [setpoint, fit[fpn]]
+        data_lst = [setpoint, f]
         _rescale_ticks_and_units(ax, data_lst)
         axes.append(ax)
     return axes
+
 
 def plot_fit_by_id(fit_run_id,
                    show_variance=True,
                    show_initial_values=False,
                    save_plots=True,
+                   source_conn=None,
+                   target_conn=None,
                    **setpoint_values):
     """
     Plots the result of a fit (against the data where possible) and
@@ -227,52 +263,95 @@ def plot_fit_by_id(fit_run_id,
         matplotlib colorbar of the 2d heatmap (None if not generated)
     """
 
-    # load data and metadata and sort into dictionaries based on metadata and
-    # setpoint_values
-    fit_data = load_by_id(fit_run_id)
+    # load and organize data
+    fit_data = load_by_id(fit_run_id, target_conn)
     metadata = load_json_metadata(fit_data)
-    dependent_parameter_name = metadata['inferred_from']['dept_var']
-    independent_parameter_names = metadata['inferred_from']['indept_vars']
+    fit_names = metadata['fitter']['fit_parameters']
+    var_names = metadata['fitter'].get('variance_parameters', None)
+    initial_val_names = metadata['fitter'].get(
+        'initial_value_parameters', None)
+    dependent_name = metadata['inferred_from']['dept_var']
+    independent_names = metadata['inferred_from']['indept_vars']
+    average_names = metadata['inferred_from']['average_vars']
     exp_run_id = metadata['inferred_from']['run_id']
-    exp_data = load_by_id(exp_run_id)
-
-    dept, independent, exp_setpoints = organize_exp_data(
-        exp_data, dependent_parameter_name, *independent_parameter_names,
-        **setpoint_values)
-    if len(independent[list(independent.keys())[0]]['data']) != len(dept['data']):
-        for k, v in independent.items():
-            independent[k]['data'] = np.array(v['data'][:len(dept['data'])])
-    success, fit, variance, initial_values, fit_setpoints, point_vals = organize_fit_data(
-        fit_data, **setpoint_values)
-
-    # implement variance and setpoint plotting choices
-    if not show_variance or not variance:
-        variance = None
-    if not show_initial_values or not initial_values:
-        initial_values = None
-
-    # check for unplottable fit options
+    exp_data = load_by_id(exp_run_id, source_conn)
+    success, fit, var, initial_vals = organize_fit_data(
+        fit_run_id, conn=target_conn, **setpoint_values)
+    var = var if show_variance else None
+    initial_vals = initial_vals if show_initial_values else None
+    for s in setpoint_values.keys():
+        setpoint_values[s] = success[s].values
+    for coord in success.coords:
+        if coord not in list(setpoint_values.keys()) + ['index']:
+            setpoint_values[coord] = success[coord].values
+    dependent, independent = organize_exp_data(
+        exp_run_id, dependent_name, *independent_names,
+        average_names=average_names, conn=source_conn, **setpoint_values)
+    for s, v in setpoint_values.items():
+        if any(np.atleast_1d(dependent[s].values) != np.atleast_1d(v)):
+            raise RuntimeError(
+                'Fit setpoint {} {} does not match exp setpoint val {}'.format(
+                    s, dependent[s], v))
     if len(independent) > 1:
         raise NotImplementedError("Plotting only currently works for "
                                   "fitters with 1 independent variable")
-    else:
-        indept = independent[independent_parameter_names[0]]
-    if len(exp_setpoints) != len(fit_setpoints):
-        raise RuntimeError(f'Different number of data and fit setpoints: '
-                           f'{len(exp_setpoints)} != {len(fit_setpoints)}')
+    independent = independent[0]
 
     # generate additional label text and filename text
     text_list = []
     extra_save_text_list = []
-    for i, s in enumerate(setpoint_values.keys()):
-        pspec = fit_data.paramspecs[s]
-        val = point_vals[i]
-        text_list.append(
-            '{} = {:.3g} {}'.format(pspec.label, val, pspec.unit))
-        extra_save_text_list.append(
-            '{}_{:.3g}'.format(pspec.name, val).replace('.', 'p'))
+    to_r = []
+    for i, (s, v) in enumerate(setpoint_values.items()):
+        if v.shape == ():
+            s_parm = exp_data.paramspecs[s]
+            text_list.append(
+                '{} = {:.3g} {}'.format(s_parm.label, v, s_parm.unit))
+            extra_save_text_list.append(
+                '{}{:.3g}'.format(s_parm.name, v).replace('.', 'p'))
+            to_r.append(s)
+    for s in to_r:
+        setpoint_values.pop(s)
     text = '\n'.join(text_list)
-    extra_save_text = '_'.join(extra_save_text_list)
+
+    # organise data into dictionaries
+    dependent_parm = exp_data.paramspecs[dependent_name]
+    dependent_dict = {'name': dependent_parm.name,
+                      'label': dependent_parm.label,
+                      'unit': dependent_parm.unit,
+                      'data': dependent.values}
+    independent_parm = exp_data.paramspecs[independent_names[0]]
+    independent_dict = {'name': independent_parm.name,
+                        'label': independent_parm.label,
+                        'unit': independent_parm.unit,
+                        'data': independent.values}
+    fit_dicts = []
+    initial_val_dicts = [] if initial_vals else None
+    var_dicts = [] if var else None
+    for i, f in enumerate(fit_names):
+        fit_parm = fit_data.paramspecs[f]
+        fit_dicts.append({'name': fit_parm.name,
+            'label': fit_parm.label,
+            'unit': fit_parm.unit,
+            'data': fit[i]})
+        if initial_vals is not None:
+            initial_val_parm = fit_data.paramspecs[initial_val_names[i]]
+            initial_val_dicts.append({'name': initial_val_parm.name,
+                'label': initial_val_parm.label,
+                'unit': initial_val_parm.unit,
+                'data': initial_vals[i]})
+        if var is not None:
+            var_parm = fit_data.paramspecs[var_names[i]]
+            var_dicts.append({'name': var_parm.name,
+                'label': var_parm.label,
+                'unit': var_parm.unit,
+                'data': var[i]})
+    setpoint_dicts = []
+    for s, v in setpoint_values.items():
+        setpoint_parm = exp_data.paramspecs[s]
+        setpoint_dicts.append({'name': setpoint_parm.name,
+            'label': setpoint_parm.label,
+            'unit': setpoint_parm.unit,
+            'data': v})
 
     # generate title
     axes = []
@@ -284,79 +363,68 @@ def plot_fit_by_id(fit_run_id,
         metadata['inferred_from']['sample_name'])
 
     # calculate data dimension
-    dimension = len(fit_setpoints) + 1
-    if dimension == 2:
-        fit_setpoint = next(f for f in fit_setpoints.values())
-        exp_setpoint = next(e for e in exp_setpoints.values())
+    dimension = len(setpoint_dicts)
     if dimension > 2:
         raise RuntimeError('Cannot make 3D plot. Try specifying a cut')
 
     # make the plots
-    # 1D PLOTTING - data + fit 1d plot
-    if dimension == 1:
+    if dimension == 0:  # 1D PLOTTING - data + fit 1d plot
         if metadata['fitter']['method'] == 'LeastSquares':
-            if not success['data'][0]:
-                fit = None
-                variance = None
-                initial_values = None
-            ax = plot_least_squares_1d(indept, dept, metadata, title,
-                                       fit=fit, variance=variance,
-                                       initial_values=initial_values,
-                                       text=text)
+            if not success.values:
+                fit_dicts = None
+                var_dicts = None
+                initial_val_dicts = None
+            ax = plot_least_squares_1d(
+                independent_dict, dependent_dict, metadata, title,
+                fit=fit_dicts, variance=var_dicts,
+                initial_values=initial_val_dicts, text=text)
             axes.append(ax)
         else:
             warnings.warn(
                 'Attempt to plot a 1d plot of a non LeastSquares fit')
-    # 2D PLOTTING: 2d fit heat map plot + fit param plots
-    elif dimension == 2:
+    elif dimension == 1:  # 2D PLOTTING: 2d fit heat map plot + fit param plots
+        setpoint_dict = setpoint_dicts.pop()
         xpoints, ypoints, zpoints = [], [], []
         if metadata['fitter']['method'] == 'LeastSquares':
-            for i, val in enumerate(fit_setpoint['data']):
-                indices = np.argwhere(exp_setpoint['data'] == val).flatten()
-                xpoints.append(indept['data'][indices].flatten())
-                ypoints.append(exp_setpoint['data'][indices].flatten())
-                success_point = success['data'][i]
+            for i, val in enumerate(setpoint_dict['data']):
+                xpoints.append(np.ones(len(independent_dict['data'])) * val)
+                ypoints.append(independent_dict['data'])
+                success_point = success[i]
                 if success_point:
-                    fit_vals = {f['name']: f['data'][i] for f in fit.values()}
+                    fit_vals = {f['name']: f['data'].values[i]
+                                for f in fit_dicts}
                     kwargs = {
                         'np': np,
-                        'x': indept['data'][indices].flatten(),
+                        'x': independent_dict['data'],
                         **fit_vals}
                     zpoints.append(eval(metadata['fitter']['function']['np'],
                                         kwargs))
                 else:
-                    zpoints.append([None] * len(indept['data'][indices]))
+                    zpoints.append([None] * len(independent_dict['data']))
             xpoints = np.array(xpoints).flatten()
             ypoints = np.array(ypoints).flatten()
             zpoints = np.array(zpoints).flatten()
             # 2D simulated heatmap plot
-            x = {**indept, 'data': xpoints}
-            y = {**exp_setpoint, 'data': ypoints}
-            z = {**dept, 'data': zpoints, 'label': 'Simulated ' + dept['label']}
+            x = {**setpoint_dict, 'data': xpoints}
+            y = {**independent_dict, 'data': ypoints}
+            z = {**dependent_dict, 'data': zpoints,
+                 'label': 'Simulated ' + dependent_dict['label']}
             ax, colorbar = plot_heat_map(x, y, z, title)
             axes.append(ax)
 
         # 1D fit parameter vs setpoint plots
-        axes += plot_fit_param_1ds(fit_setpoint, fit, metadata, title,
-                                   variance=variance,
-                                   initial_values=initial_values)
+        axes += plot_fit_param_1ds(setpoint_dict, fit_dicts, metadata, title,
+                                   variance=var_dicts,
+                                   initial_values=initial_val_dicts)
     # 3D PLOTTING: nope
     else:
-        warnings.warn(
-            "Plotting for more than one setpoint not yet implemented")
+        axes, colorbar = plot_by_id(fit_run_id, conn=target_conn)
 
     # saving
     if save_plots:
-        kwargs = {'run_id': fit_data.run_id,
-                  'exp_id': fit_data.exp_id,
-                  'exp_name': fit_data.exp_name,
-                  'sample_name': fit_data.sample_name}
-        name_extension = '_'.join(['fit'] + [extra_save_text])
+        name_extension = '_'.join(['fit'] + extra_save_text_list)
         for i, ax in enumerate(axes):
-            ax.figure.savefig(make_filename(fit_data.run_id, i,
-                                            analysis=True, extension=name_extension))
-        #save_image(axes, name_extension=name_extension, **kwargs)
+            filename = make_filename(fit_data.run_id, index=i, analysis=True,
+                                     extension=name_extension, conn=target_conn)
+            ax.figure.savefig(filename)
     return axes, colorbar
-
-
-

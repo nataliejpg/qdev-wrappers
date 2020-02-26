@@ -62,29 +62,11 @@ class ExpDecayBaseFitter(LeastSquaresFitter):
         super().__init__(name, fit_parameters, function_metadata)
         self.guess = guess.power_decay
 
-class BenchmarkingFitter(LeastSquaresFitter):
-    """
-    Least Squares Fitter which fits to an exponential using the equation
-        a * p**nx + b
-    and given the measured results and the values of x. Useful for fitting
-    benchmarking results.
-    """
-    def __init__(self, name='BenchmarkingFitter', n=1):
-        fit_parameters = {'a': {'label': '$a$', 'unit': 'V'},
-                          'p': {'label': '$p$'},
-                          'b': {'label': '$b$', 'unit': 'V'}}
-        function_metadata = {'str': r'$f(x) = A p^nx + B$',
-                             'np': f'a * p**({n}*x) + b'}
-        super().__init__(name, fit_parameters, function_metadata)
-        self.guess = guess.power_decay
-
-    def set_n(self, val):
-        self.metadata['function']['np'] =  f'a * p**({val}*x) + b'
 
 class CosFitter(LeastSquaresFitter):
     """
     Least Squares Fitter which fits to a cosine using the equation
-        a * np.cos(w * x + p) + c
+        a * np.cos(2 pi w * x + p) + c
     and given the measured results and the values of x. Useful for fitting
     Rabi oscillations.
     """
@@ -93,8 +75,8 @@ class CosFitter(LeastSquaresFitter):
                           'w': {'label': r'$\omega$', 'unit': 'Hz'},
                           'p': {'label': r'$\phi$'},
                           'c': {'label': '$c$', 'unit': ''}}
-        function_metadata = {'str': r'$f(x) = a\cos(\omega x + \phi)+c$',
-                             'np': 'a * np.cos(w * x + p) + c'}
+        function_metadata = {'str': r'$f(x) = a\cos(2 \pi \omega x + \phi)+c$',
+                             'np': 'a * np.cos(2 * np.pi * w * x + p) + c'}
         super().__init__(name, fit_parameters, function_metadata)
         self.guess = guess.cosine
 
