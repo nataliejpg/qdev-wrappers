@@ -49,9 +49,9 @@ def fit_by_id(data_run_id, fitter,
     setpoint_names = list(setpoint_values.keys())
     for setpoint_name in setpoint_names:
         paramspec = exp_data.paramspecs[setpoint_name]
-        meas.register_custom_parameter(name=paramspec['name'],
-                                       label=paramspec['label'],
-                                       unit=paramspec['unit'])
+        meas.register_custom_parameter(name=paramspec.name,
+                                       label=paramspec.label,
+                                       unit=paramspec.unit)
 
     # register fit parameters
     for param in fitter.all_parameters:
@@ -68,12 +68,6 @@ def fit_by_id(data_run_id, fitter,
     with meas.run() as datasaver:
         datasaver._dataset.add_metadata(*metadata)
         fit_run_id = datasaver.run_id
-        # if len(setpoint_names) == 0:
-        #     dept_data = dependent.values
-        #     indept_data = [dependent[ind].values for ind in indept_names]
-        #     fitter.fit(dept_data, *indept_data, **kwargs)
-        #     result = [(f.name, f()) for f in fitter.all_parameters]
-        #     datasaver.add_result(*result)
         for vals in setpoint_comb_values:
             comb_dict = dict(zip(setpoint_names, vals))
             dept_data = dependent.sel(**comb_dict)

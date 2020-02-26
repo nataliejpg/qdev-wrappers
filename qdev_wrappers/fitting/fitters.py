@@ -66,7 +66,7 @@ class ExpDecayBaseFitter(LeastSquaresFitter):
 class CosFitter(LeastSquaresFitter):
     """
     Least Squares Fitter which fits to a cosine using the equation
-        a * np.cos(w * x + p) + c
+        a * np.cos(2 pi w * x + p) + c
     and given the measured results and the values of x. Useful for fitting
     Rabi oscillations.
     """
@@ -75,8 +75,8 @@ class CosFitter(LeastSquaresFitter):
                           'w': {'label': r'$\omega$', 'unit': 'Hz'},
                           'p': {'label': r'$\phi$'},
                           'c': {'label': '$c$', 'unit': ''}}
-        function_metadata = {'str': r'$f(x) = a\cos(\omega x + \phi)+c$',
-                             'np': 'a * np.cos(w * x + p) + c'}
+        function_metadata = {'str': r'$f(x) = a\cos(2 \pi \omega x + \phi)+c$',
+                             'np': 'a * np.cos(2 * np.pi * w * x + p) + c'}
         super().__init__(name, fit_parameters, function_metadata)
         self.guess = guess.cosine
 

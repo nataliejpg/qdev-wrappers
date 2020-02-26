@@ -82,10 +82,8 @@ def plot_least_squares_1d(indept, dept, metadata, title,
         p_label_list.append(metadata['fitter']['function']['str'])
         for i, f in enumerate(fit):
             fit_val = f['data'].values[0]
-            # fit_val = np.atleast_1d(f['data'].values)[0]
             if variance is not None:
                 variance_val = variance[i]['data'].values[0]
-                # variance_val = np.atleast_1d(variance[i]['data'].values)[0]
                 standard_dev = np.sqrt(variance_val)
                 p_label_list.append('{} = {:.3g} ± {:.3g} {}'.format(
                     f['label'], fit_val,
@@ -193,8 +191,8 @@ def plot_fit_param_1ds(setpoint, fit, metadata, title,
         list of matplotlib axes
     """
     axes = []
-    order = setpoint['data'].values.argsort()
-    xpoints = setpoint['data'].values[order]
+    order = setpoint['data'].argsort()
+    xpoints = setpoint['data'][order]
     # fit_paramnames = metadata['fitter']['fit_parameters']
     variance_paramnames = metadata['fitter'].get('variance_parameters')
     intial_value_paramnames = metadata['fitter'].get(
@@ -290,7 +288,7 @@ def plot_fit_by_id(fit_run_id,
         exp_run_id, dependent_name, *independent_names,
         average_names=average_names, conn=source_conn, **setpoint_values)
     for s, v in setpoint_values.items():
-        if dependent[s] != v:
+        if any(np.atleast_1d(dependent[s].values) != np.atleast_1d(v)):
             raise RuntimeError(
                 'Fit setpoint {} {} does not match exp setpoint val {}'.format(
                     s, dependent[s], v))
@@ -302,15 +300,17 @@ def plot_fit_by_id(fit_run_id,
     # generate additional label text and filename text
     text_list = []
     extra_save_text_list = []
+    to_r = []
     for i, (s, v) in enumerate(setpoint_values.items()):
         if v.shape == ():
             s_parm = exp_data.paramspecs[s]
-            if len(np.atleast_1d(s['data'])) == 1:
-                text_list.append(
-                    '{} = {:.3g} {}'.format(s_parm.label, v, s_parm.unit))
-                extra_save_text_list.append(
-                    '{}{:.3g}'.format(s_parm.name, v).replace('.', 'p'))
-                setpoint_values.remove(s)
+            text_list.append(
+                '{} = {:.3g} {}'.format(s_parm.label, v, s_parm.unit))
+            extra_save_text_list.append(
+                '{}{:.3g}'.format(s_parm.name, v).replace('.', 'p'))
+            to_r.append(s)
+    for s in to_r:
+        setpoint_values.pop(s)
     text = '\n'.join(text_list)
 
     # organise data into dictionaries
@@ -383,16 +383,16 @@ def plot_fit_by_id(fit_run_id,
             warnings.warn(
                 'Attempt to plot a 1d plot of a non LeastSquares fit')
     elif dimension == 1:  # 2D PLOTTING: 2d fit heat map plot + fit param plots
-        setpoints_dict = setpoints_dicts.pop()
+        setpoint_dict = setpoint_dicts.pop()
         xpoints, ypoints, zpoints = [], [], []
         if metadata['fitter']['method'] == 'LeastSquares':
-            for i, val in enumerate(setpoints_dict['data']):
+            for i, val in enumerate(setpoint_dict['data']):
                 xpoints.append(np.ones(len(independent_dict['data'])) * val)
                 ypoints.append(independent_dict['data'])
-                success_point = success['data'][i]
+                success_point = success[i]
                 if success_point:
-                    fit_vals = {n: d['data'].values[i]
-                                for n, d in fit_dicts.items()}
+                    fit_vals = {f['name']: f['data'].values[i]
+                                for f in fit_dicts}
                     kwargs = {
                         'np': np,
                         'x': independent_dict['data'],
