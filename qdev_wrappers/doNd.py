@@ -73,14 +73,14 @@ def do1d(param_set, start, stop, num_points, delay, *tasks):
             task_tuples.append(Task('param', task))
         else:
             task_tuples.append(Task('function', task))
-    progress_bar = progressbar.ProgressBar(max_value=num_points)
+    progress_bar = progressbar.ProgressBar(max_value=int(num_points))
     points_taken = 0
     time.sleep(0.1)
     
     with meas.run() as datasaver:
         run_id = datasaver.run_id
         last_time = time.time()
-        for set_point in np.linspace(start, stop, num_points):
+        for set_point in np.linspace(start, stop, int(num_points)):
             param_set.set(set_point)
             results = []
             for task_tuple in task_tuples:
@@ -120,16 +120,16 @@ def do2d(param_set1, start1, stop1, num_points1, delay1,
             task_tuples.append(Task('param', task))
         else:
             task_tuples.append(Task('function', task))
-    progress_bar = progressbar.ProgressBar(max_value=num_points1 * num_points2)
+    progress_bar = progressbar.ProgressBar(max_value=int(num_points1 * num_points2))
     points_taken = 0
     time.sleep(0.1)
     
     with meas.run() as datasaver:
         run_id = datasaver.run_id
         last_time = time.time()
-        for set_point1 in np.linspace(start1, stop1, num_points1):
+        for set_point1 in np.linspace(start1, stop1, int(num_points1)):
             param_set1.set(set_point1)
-            for set_point2 in np.linspace(start2, stop2, num_points2):
+            for set_point2 in np.linspace(start2, stop2, int(num_points2)):
                 param_set2.set(set_point2)
                 results = []
                 for task_tuple in task_tuples:

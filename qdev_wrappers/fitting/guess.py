@@ -77,3 +77,20 @@ def cosine(y, x):
         p = np.arccos((y[0] - c) / a)
 
     return [a, w, p, c]
+
+
+def rabi(x, y):
+    """Guess for detuned rabis with freq V, detuning d """
+    """and initial population P1"""
+
+    P1 = np.mean(y[:3])
+    yhat = fftpack.rfft(y - y.mean())
+    idx = (yhat ** 2).argmax()
+    freqs = fftpack.rfftfreq(len(x), d=(x[1] - x[0]) / (2 * np.pi))
+    V = freqs[idx]
+    sorted_y = np.sort(y)
+    num_points = int(len(y) / 20)
+    amp = np.mean(sorted_y[-num_points:]) - np.mean(sorted_y[:num_points])
+    detuning = V * np.sqrt(1 / amp - 1)
+
+    return[V, detuning, P1]

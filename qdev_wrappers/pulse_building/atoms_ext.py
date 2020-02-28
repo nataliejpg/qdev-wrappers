@@ -48,7 +48,7 @@ def sine_gaussianDRAG(time, frequency, phase=0, sigma_cutoff=4, amplitude=1, DRA
         return 0
     sigma = time[-1] / (2 * sigma_cutoff)
     t = time - time[-1] / 2
-    sideband =  np.sin(frequency * 2 * np.pi * time + phase)
+    sideband =  amplitude * np.sin(frequency * 2 * np.pi * time + phase)
     if DRAG:
         return sideband * t / sigma * np.exp(-(t / (2. * sigma))**2) + offset
     else:
