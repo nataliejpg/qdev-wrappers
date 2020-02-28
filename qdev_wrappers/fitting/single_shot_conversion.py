@@ -68,8 +68,8 @@ def one_qubit_exp(run_id, fdict,
 
     # do projection and decision_making and update setpoints
     projected = project(re_array, im_array, fdict['angle'])
-    probability = (projected < fdict['decision_value']).mean(*average_names)
-    projected = projected.mean(*average_names)
+    probability = (projected < fdict['decision_value']).mean(dim=average_names)
+    projected = projected.mean(dim=average_names)
     for coord in projected.coords:
         if coord not in list(setpoint_values.keys()) + ['index']:
             setpoint_values[coord] = projected[coord].values
@@ -137,6 +137,7 @@ def one_qubit_exp(run_id, fdict,
                     analysis_run_id, index=i, analysis=False,
                     extension=f'q{qubit}_{subfolder}', conn=target_conn)
                 ax.figure.savefig(filename, dpi=500, bbox_inches='tight')
+                plt.close()
     else:
         analysis_run_id = None
         if plot:
@@ -146,150 +147,151 @@ def one_qubit_exp(run_id, fdict,
     return res_dict, analysis_run_id
 
 
-def two_qubit_exp(run_id, fdict1, fdict2,
-                  re_name1='alazar_controller_ch_0_r_records_buffers_data',
-                  im_name1='alazar_controller_ch_0_i_records_buffers_data',
-                  re_name2='alazar_controller_ch_1_r_records_buffers_data',
-                  im_name2='alazar_controller_ch_1_i_records_buffers_data',
-                  reps_name='alazar_controller_repetitions',
-                  correct_errors=False,
-                  subfolder=None,
-                  plot=True,
-                  index_start=0,
-                  reps_name2=None,
-                  save=False,
-                  source_conn=None,
-                  target_conn=None,
-                  **setpoints):
-    re_array1, im_array1, re_array2, im_array2 = load_xarrays(
-        run_id, re_name1, im_name1, re_name2, im_name2, conn=source_conn)
-    for k, v in setpoints.items():
-        re_array1 = re_array1.sel(k=v)
-        im_array1 = im_array1.sel(k=v)
-        re_array2 = re_array2.sel(k=v)
-        im_array2 = im_array2.sel(k=v)
-    all_x1 = re_array1.values.flatten()
-    all_y1 = im_array1.values.flatten()
-    all_x2 = re_array2.values.flatten()
-    all_y2 = im_array2.values.flatten()
-    all_data1 = np.array(list(zip(all_x1, all_y1)))
-    all_data2 = np.array(list(zip(all_x2, all_y2)))
-    coord_names = list(re_array1.coords.keys())
-    avg_names = [n for n in [reps_name, reps_name2] if n is not None]
-    avg_inds = []
-    for r_n in avg_names:
-        avg_i = coord_names.index(r_n)
-        avg_inds.append(avg_i)
-        del coord_names[avg_i]
-    projected1 = project(re_array1, im_array1, fdict1['angle']).mean(*avg_names)
-    projected2 = project(re_array1, im_array1, fdict2['angle']).mean(*avg_names)
-    if 'kmeans' in fdict1:
-        probability1 = fdict1['kmeans'].predict(all_data1)
-    else:
-        all_data = project(all_x1, all_y1, fdict1['angle'])
-        probability1 = (all_data < fdict1['decision_value']).reshape(
-            re_array1.values.shape).mean(axis=tuple(avg_inds))
-    if 'kmeans' in fdict1:
-        probability2 = fdict2['kmeans'].predict(all_data2)
-    else:
-        all_data = project(all_x2, all_y2, fdict2['angle'])
-        probability2 = (all_data < fdict2['decision_value']).reshape(
-            re_array12values.shape).mean(axis=tuple(avg_inds))
-    if correct_errors:
-        for i, q1val in enumerate(projected1):
-            probability1 = probability1.astype('float')
-            probability2 = probability2.astype('float')
-            q2val = projected2[i]
-            if q2val + q1val != 1:
-                probability1[i] = np.nan
-                probability2[i] = np.nan
-    probability1 = np.nanmean(probability1.reshape(re_array1.values.shape), axis=tuple(avg_inds))
-    probability2 = np.nanmean(probability2.reshape(re_array1.values.shape), axis=tuple(avg_inds))
+# def two_qubit_exp(run_id, fdict1, fdict2,
+#                   re_name1='alazar_controller_ch_0_r_records_buffers_data',
+#                   im_name1='alazar_controller_ch_0_i_records_buffers_data',
+#                   re_name2='alazar_controller_ch_1_r_records_buffers_data',
+#                   im_name2='alazar_controller_ch_1_i_records_buffers_data',
+#                   reps_name='alazar_controller_repetitions',
+#                   correct_errors=False,
+#                   subfolder=None,
+#                   plot=True,
+#                   index_start=0,
+#                   reps_name2=None,
+#                   save=False,
+#                   source_conn=None,
+#                   target_conn=None,
+#                   **setpoints):
+#     re_array1, im_array1, re_array2, im_array2 = load_xarrays(
+#         run_id, re_name1, im_name1, re_name2, im_name2, conn=source_conn)
+#     for k, v in setpoints.items():
+#         re_array1 = re_array1.sel(k=v)
+#         im_array1 = im_array1.sel(k=v)
+#         re_array2 = re_array2.sel(k=v)
+#         im_array2 = im_array2.sel(k=v)
+#     all_x1 = re_array1.values.flatten()
+#     all_y1 = im_array1.values.flatten()
+#     all_x2 = re_array2.values.flatten()
+#     all_y2 = im_array2.values.flatten()
+#     all_data1 = np.array(list(zip(all_x1, all_y1)))
+#     all_data2 = np.array(list(zip(all_x2, all_y2)))
+#     coord_names = list(re_array1.coords.keys())
+#     avg_names = [n for n in [reps_name, reps_name2] if n is not None]
+#     avg_inds = []
+#     for r_n in avg_names:
+#         avg_i = coord_names.index(r_n)
+#         avg_inds.append(avg_i)
+#         del coord_names[avg_i]
+#     projected1 = project(re_array1, im_array1, fdict1['angle']).mean(dim=avg_names)
+#     projected2 = project(re_array1, im_array1, fdict2['angle']).mean(dim=avg_names)
+#     if 'kmeans' in fdict1:
+#         probability1 = fdict1['kmeans'].predict(all_data1)
+#     else:
+#         all_data = project(all_x1, all_y1, fdict1['angle'])
+#         probability1 = (all_data < fdict1['decision_value']).reshape(
+#             re_array1.values.shape).mean(axis=tuple(avg_inds))
+#     if 'kmeans' in fdict1:
+#         probability2 = fdict2['kmeans'].predict(all_data2)
+#     else:
+#         all_data = project(all_x2, all_y2, fdict2['angle'])
+#         probability2 = (all_data < fdict2['decision_value']).reshape(
+#             re_array12values.shape).mean(axis=tuple(avg_inds))
+#     if correct_errors:
+#         for i, q1val in enumerate(projected1):
+#             probability1 = probability1.astype('float')
+#             probability2 = probability2.astype('float')
+#             q2val = projected2[i]
+#             if q2val + q1val != 1:
+#                 probability1[i] = np.nan
+#                 probability2[i] = np.nan
+#     probability1 = np.nanmean(probability1.reshape(re_array1.values.shape), axis=tuple(avg_inds))
+#     probability2 = np.nanmean(probability2.reshape(re_array1.values.shape), axis=tuple(avg_inds))
 
-    projected_info1 = {'data': projected1,
-                       'label': 'Cavity Response Q1',
-                       'unit': 'V'}
-    projected_info2 = {'data': projected2,
-                       'label': 'Cavity Response Q2',
-                       'unit': 'V'}
-    probability_info1 = {'data': probability1,
-                         'label': 'Excited Population Q1',
-                         'unit': ''}
-    probability_info2 = {'data': probability2,
-                         'label': 'Excited Population Q2',
-                         'unit': ''}
+#     projected_info1 = {'data': projected1,
+#                        'label': 'Cavity Response Q1',
+#                        'unit': 'V'}
+#     projected_info2 = {'data': projected2,
+#                        'label': 'Cavity Response Q2',
+#                        'unit': 'V'}
+#     probability_info1 = {'data': probability1,
+#                          'label': 'Excited Population Q1',
+#                          'unit': ''}
+#     probability_info2 = {'data': probability2,
+#                          'label': 'Excited Population Q2',
+#                          'unit': ''}
 
-    coord_dict = {}
-    for coord_name in coord_names:
-        coord_label, coord_unit = coord_label_lookup.get(
-            coord_name, [coord_name, ''])
-        coord_dict[coord_name] = {'data': re_array1[coord_name].values,
-                                  'label': coord_label,
-                                  'unit': coord_unit}
+#     coord_dict = {}
+#     for coord_name in coord_names:
+#         coord_label, coord_unit = coord_label_lookup.get(
+#             coord_name, [coord_name, ''])
+#         coord_dict[coord_name] = {'data': re_array1[coord_name].values,
+#                                   'label': coord_label,
+#                                   'unit': coord_unit}
 
-    res_dict_proj = {'cavity_response1': projected_info1,
-                     'cavity_response2': projected_info2,
-                     **coord_dict}
+#     res_dict_proj = {'cavity_response1': projected_info1,
+#                      'cavity_response2': projected_info2,
+#                      **coord_dict}
 
-    res_dict_prob = {'excited_population1': probability_info1,
-                     'excited_population2': probability_info2,
-                     **coord_dict}
+#     res_dict_prob = {'excited_population1': probability_info1,
+#                      'excited_population2': probability_info2,
+#                      **coord_dict}
 
-    if save:
-        if target_conn is not None:
-            if target_conn is not None:
-                target_exp = load_last_experiment(target_conn)
-            else:
-                target_exp = None
-        meas = Measurement(exp=target_exp)
-        for coord_name, coord_info in enumerate(coord_dict):
-            meas.register_custom_parameter(coord_name,
-                                           label=coord_info['label'],
-                                           unit=coord_info['unit'])
-        meas.register_custom_parameter('cavity_response1',
-                                       label=projected_info1['label'],
-                                       unit=projected_info1['unit'],
-                                       setpoints=tuple(coord_names))
-        meas.register_custom_parameter('excited_population1',
-                                       label=probability_info1['label'],
-                                       setpoints=tuple(coord_names))
-        meas.register_custom_parameter('cavity_response2',
-                                       label=projected_info2['label'],
-                                       unit=projected_info2['unit'],
-                                       setpoints=tuple(coord_names))
-        meas.register_custom_parameter('excited_population2',
-                                       label=probability_info2['label'],
-                                       setpoints=tuple(coord_names))
+#     if save:
+#         if target_conn is not None:
+#             if target_conn is not None:
+#                 target_exp = load_last_experiment(target_conn)
+#             else:
+#                 target_exp = None
+#         meas = Measurement(exp=target_exp)
+#         for coord_name, coord_info in enumerate(coord_dict):
+#             meas.register_custom_parameter(coord_name,
+#                                            label=coord_info['label'],
+#                                            unit=coord_info['unit'])
+#         meas.register_custom_parameter('cavity_response1',
+#                                        label=projected_info1['label'],
+#                                        unit=projected_info1['unit'],
+#                                        setpoints=tuple(coord_names))
+#         meas.register_custom_parameter('excited_population1',
+#                                        label=probability_info1['label'],
+#                                        setpoints=tuple(coord_names))
+#         meas.register_custom_parameter('cavity_response2',
+#                                        label=projected_info2['label'],
+#                                        unit=projected_info2['unit'],
+#                                        setpoints=tuple(coord_names))
+#         meas.register_custom_parameter('excited_population2',
+#                                        label=probability_info2['label'],
+#                                        setpoints=tuple(coord_names))
 
-        with meas.run() as datasaver:
-            dim = len(projected1.shape)
-            analysis_run_id = datasaver.run_id
-            if dim == 1:
-                for i in range(len(projected)):
-                    result = [('cavity_response1', projected1[i]),
-                              ('excited_population1', probability1[i]),
-                              ('cavity_response2', projected2[i]),
-                              ('excited_population2', probability2[i])]
-                    for coord_name, coord_info in enumerate(coord_dict):
-                        coord_data = re_array1.mean(reps_name)[i].coords
-                        result.append((coord_name, coord_info['data'][i]))
-                        datasaver.add_result(*result)
-            elif dim == 2:
-                print('hio')
-        if plot:
-            axes, cbar = plot_by_id(analysis_run_id, conn=target_conn)
-            for i, ax in enumerate(axes):
-                filename = make_filename(
-                    analysis_run_id, index=i, analysis=False,
-                    extension=f'{subfolder}', conn=target_conn)
-                ax.figure.savefig(filename, dpi=500, bbox_inches='tight')
-    elif plot:
-        plot_result(res_dict_proj, 'cavity_response1', 'cavity_response2',
-                    index=0, run_id=run_id, subfolder=subfolder)
-        plot_result(res_dict_prob, 'excited_population1', 'excited_population2',
-                    index=1, run_id=run_id, subfolder=subfolder)
+#         with meas.run() as datasaver:
+#             dim = len(projected1.shape)
+#             analysis_run_id = datasaver.run_id
+#             if dim == 1:
+#                 for i in range(len(projected)):
+#                     result = [('cavity_response1', projected1[i]),
+#                               ('excited_population1', probability1[i]),
+#                               ('cavity_response2', projected2[i]),
+#                               ('excited_population2', probability2[i])]
+#                     for coord_name, coord_info in enumerate(coord_dict):
+#                         coord_data = re_array1.mean(reps_name)[i].coords
+#                         result.append((coord_name, coord_info['data'][i]))
+#                         datasaver.add_result(*result)
+#             elif dim == 2:
+#                 print('hio')
+#         if plot:
+#             axes, cbar = plot_by_id(analysis_run_id, conn=target_conn)
+#             for i, ax in enumerate(axes):
+#                 filename = make_filename(
+#                     analysis_run_id, index=i, analysis=False,
+#                     extension=f'{subfolder}', conn=target_conn)
+#                 ax.figure.savefig(filename, dpi=500, bbox_inches='tight')
+#                 plt.close()
+#     elif plot:
+#         plot_result(res_dict_proj, 'cavity_response1', 'cavity_response2',
+#                     index=0, run_id=run_id, subfolder=subfolder)
+#         plot_result(res_dict_prob, 'excited_population1', 'excited_population2',
+#                     index=1, run_id=run_id, subfolder=subfolder)
 
-    return {**res_dict_proj, **res_dict_prob}
+#     return {**res_dict_proj, **res_dict_prob}
 
 
 def plot_result(res_dict, *plottable_names, index=0, qubit=None,

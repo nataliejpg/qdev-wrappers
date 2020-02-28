@@ -55,7 +55,6 @@ def state_learning(run_id, conn=None,
                    re_name='cavity_real_response',
                    im_name='cavity_imaginary_response',
                    qubit=1,
-                   subfolder=None,
                    centers=None,
                    plot=True,
                    index_start=0):
@@ -71,7 +70,7 @@ def state_learning(run_id, conn=None,
         for i, fig in enumerate(figs):
             title = fig.suptitle(title_text)
             filename = make_filename(
-                run_id, index=index_start + i, analysis=False,
+                run_id, index=index_start + i, analysis=True,
                 extension=f'q{qubit}_readout', conn=conn)
             fig.savefig(filename, dpi=500, bbox_extra_artists=(legs[i], title),
                         bbox_inches='tight')

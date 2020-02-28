@@ -62,7 +62,7 @@ def plot_least_squares_1d(indept, dept, metadata, title,
                         num=len(indept['data']) * 10)
         finalkwargs = {'x': x,
                        'np': np,
-                       **{f['name']: f['data'].values[()] for f in fit}}
+                       **{f['name']: np.atleast_1d(f['data'].values)[0] for f in fit}}
         finaly = eval(metadata['fitter']['function']['np'],
                       finalkwargs)
         ax.plot(x, finaly, color='C1', label='fit')
@@ -81,9 +81,9 @@ def plot_least_squares_1d(indept, dept, metadata, title,
         p_label_list = [text] if text else []
         p_label_list.append(metadata['fitter']['function']['str'])
         for i, f in enumerate(fit):
-            fit_val = f['data'].values[0]
+            fit_val = np.atleast_1d(f['data'].values)[0]
             if variance is not None:
-                variance_val = variance[i]['data'].values[0]
+                variance_val = np.atleast_1d(variance[i]['data'].values)[0]
                 standard_dev = np.sqrt(variance_val)
                 p_label_list.append('{} = {:.3g} ± {:.3g} {}'.format(
                     f['label'], fit_val,
@@ -264,7 +264,7 @@ def plot_fit_by_id(fit_run_id,
     """
 
     # load and organize data
-    fit_data = load_by_id(fit_run_id, target_conn)
+    fit_data = load_by_id(fit_run_id, conn=target_conn)
     metadata = load_json_metadata(fit_data)
     fit_names = metadata['fitter']['fit_parameters']
     var_names = metadata['fitter'].get('variance_parameters', None)
@@ -427,4 +427,5 @@ def plot_fit_by_id(fit_run_id,
             filename = make_filename(fit_data.run_id, index=i, analysis=True,
                                      extension=name_extension, conn=target_conn)
             ax.figure.savefig(filename)
+            plt.close()
     return axes, colorbar

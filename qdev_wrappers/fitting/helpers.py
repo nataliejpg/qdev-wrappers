@@ -66,7 +66,7 @@ def organize_exp_data(run_id, dept_name, *indept_names, average_names=None,
                 setpoint_values[s][i] = nearest_val
     dept_xarr = dept_xarr.sel(**setpoint_values)
     if average_names:
-        dept_xarr = dept_xarr.mean(*average_names)
+        dept_xarr = dept_xarr.mean(dim=average_names)
     indept_xarrs = []
     for i_n in indept_names:
         indept_xarrs.append(dept_xarr[i_n])
@@ -105,12 +105,10 @@ def organize_fit_data(run_id, conn=None, **setpoint_values):
                 nearest_val = success_xarr[s].values[ind]
                 setpoint_values[s][i] = nearest_val
     success_xarr = success_xarr.sel(**setpoint_values)
-    for f in fit_xarrs:
-        f = f.sel(**setpoint_values)
-    if var_pnames:
-        for v in var_xarrs:
-            v = v.sel(**setpoint_values)
-    if initial_val_pnames:
-        for i in initial_val_xarrs:
-            i = i.sel(**setpoint_values)
+    for i in range(len(fit_xarrs)):
+        fit_xarrs[i] = fit_xarrs[i].sel(**setpoint_values)
+        if var_pnames:
+            var_xarrs[i] = var_xarrs[i].sel(**setpoint_values)
+        if initial_val_pnames:
+            initial_val_xarrs[i] = initial_val_xarrs[i].sel(**setpoint_values)
     return success_xarr, fit_xarrs, var_xarrs, initial_val_xarrs
