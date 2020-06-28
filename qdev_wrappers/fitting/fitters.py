@@ -71,7 +71,7 @@ class CosFitter(LeastSquaresFitter):
     Rabi oscillations.
     """
     def __init__(self, name='CosFitter'):
-        fit_parameters = {'a': {'label': '$a$'},
+        fit_parameters = {'a': {'label': r'$a$'},
                           'w': {'label': r'$\omega$', 'unit': 'rad'},
                           'p': {'label': r'$\phi$'},
                           'c': {'label': '$c$', 'unit': ''}}
@@ -81,20 +81,31 @@ class CosFitter(LeastSquaresFitter):
         self.guess = guess.cosine
 
 
+# class RabiFitter(LeastSquaresFitter):
+#     def __init__(self, name='RabiFitter'):
+#         fit_parameters = {'V': {'label': r'$\omega$', 'unit': 'rad'},
+#                           'd': {'label': r'$\delta$', 'unit': 'rad'},
+#                           'P1': {'label': 'Initial Excited Population', 'unit': ''}}
+#         function_metadata = {'str': 'perfect detuned rabi oscillations',
+#                              'np': 'np.abs(-1j * (V / np.sqrt(V**2 + d**2))'
+#                                    ' * np.sin(np.sqrt(V**2 + d**2) * x / 2) '
+#                                    '* np.sqrt(1 - min([1, P1])) + (np.cos(np.sqrt(V**2 '
+#                                    '+ d**2) * x / 2) + 1j * (d / np.sqrt(V**2 '
+#                                    '+ d**2)) * np.sin(np.sqrt(V**2 + d**2) * x '
+#                                    '/ 2)) * np.sqrt(max([0, P1])))**2'}
+#         super().__init__(name, fit_parameters, function_metadata)
+#         self.guess = guess.rabi
+
+
 class RabiFitter(LeastSquaresFitter):
-    def __init__(self, name='CosFitter'):
+    def __init__(self, name='RabiFitter'):
         fit_parameters = {'V': {'label': r'$\omega$', 'unit': 'rad'},
-                          'd': {'label': r'$\delta$', 'unit': 'rad'},
-                          'P1': {'label': '$Initial Excited Population$', 'unit': ''}}
+                          'd': {'label': r'$\delta$', 'unit': 'rad'}}
         function_metadata = {'str': 'perfect detuned rabi oscillations',
                              'np': 'np.abs(-1j * (V / np.sqrt(V**2 + d**2))'
-                                   ' * np.sin(np.sqrt(V**2 + d**2) * x / 2) '
-                                   '* np.sqrt(1 - P1) + (np.cos(np.sqrt(V**2 '
-                                   '+ d**2) * x / 2) + 1j * (d / np.sqrt(V**2 '
-                                   '+ d**2)) * np.sin(np.sqrt(V**2 + d**2) * x '
-                                   '/ 2)) * np.sqrt(P1))**2'}
-
+                                   ' * np.sin(np.sqrt(V**2 + d**2) * x / 2))**2'}
         super().__init__(name, fit_parameters, function_metadata)
+        self.guess = guess.rabi
 
 
 class ExpDecaySinFitter(LeastSquaresFitter):

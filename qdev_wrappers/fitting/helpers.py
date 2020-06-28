@@ -54,17 +54,18 @@ def organize_exp_data(run_id, dept_name, *indept_names, average_names=None,
         if n not in parameters:
             raise RuntimeError('{} not found in dataset {}'.format(n, run_id))
     dept_xarr = load_xarrays(run_id, dept_name, conn=conn)[0]
-    for s, v in setpoint_values.items():
-        if len(np.atleast_1d(v)) == 1:
-            ind = np.argmin(abs(dept_xarr[s] - v))
-            nearest_val = dept_xarr[s].values[ind]
-            setpoint_values[s] = nearest_val
-        else:
-            for i in range(len(np.atleast_1d(v))):
-                ind = np.argmin(abs(dept_xarr[s] - v[i]))
-                nearest_val = dept_xarr[s].values[ind]
-                setpoint_values[s][i] = nearest_val
-    dept_xarr = dept_xarr.sel(**setpoint_values)
+    # for s, v in setpoint_values.items():
+
+    #     if len(np.atleast_1d(v)) == 1:
+    #         ind = np.argmin(abs(dept_xarr[s] - v))
+    #         nearest_val = dept_xarr[s].values[ind]
+    #         setpoint_values[s] = nearest_val
+    #     else:
+    #         for i in range(len(np.atleast_1d(v))):
+    #             ind = np.argmin(abs(dept_xarr[s] - v[i]))
+    #             nearest_val = dept_xarr[s].values[ind]
+    #             setpoint_values[s][i] = nearest_val
+    dept_xarr = dept_xarr.sel(**setpoint_values, method='nearest')
     if average_names:
         dept_xarr = dept_xarr.mean(dim=average_names)
     indept_xarrs = []
@@ -94,21 +95,21 @@ def organize_fit_data(run_id, conn=None, **setpoint_values):
         initial_val_xarrs = load_xarrays(run_id, *initial_val_pnames, conn=conn)
     else:
         initial_val_xarrs = None
-    for s, v in setpoint_values.items():
-        if len(np.atleast_1d(v)) == 1:
-            ind = np.argmin(abs(success_xarr[s] - v))
-            nearest_val = success_xarr[s].values[ind]
-            setpoint_values[s] = nearest_val
-        else:
-            for i in range(len(np.atleast_1d(v))):
-                ind = np.argmin(abs(success_xarr[s] - v[i]))
-                nearest_val = success_xarr[s].values[ind]
-                setpoint_values[s][i] = nearest_val
-    success_xarr = success_xarr.sel(**setpoint_values)
+    # for s, v in setpoint_values.items():
+    #     if len(np.atleast_1d(v)) == 1:
+    #         ind = np.argmin(abs(success_xarr[s] - v))
+    #         nearest_val = success_xarr[s].values[ind]
+    #         setpoint_values[s] = nearest_val
+    #     else:
+    #         for i in range(len(np.atleast_1d(v))):
+    #             ind = np.argmin(abs(success_xarr[s] - v[i]))
+    #             nearest_val = success_xarr[s].values[ind]
+    #             setpoint_values[s][i] = nearest_val
+    success_xarr = success_xarr.sel(**setpoint_values, method='nearest')
     for i in range(len(fit_xarrs)):
-        fit_xarrs[i] = fit_xarrs[i].sel(**setpoint_values)
+        fit_xarrs[i] = fit_xarrs[i].sel(**setpoint_values, method='nearest')
         if var_pnames:
-            var_xarrs[i] = var_xarrs[i].sel(**setpoint_values)
+            var_xarrs[i] = var_xarrs[i].sel(**setpoint_values, method='nearest')
         if initial_val_pnames:
-            initial_val_xarrs[i] = initial_val_xarrs[i].sel(**setpoint_values)
+            initial_val_xarrs[i] = initial_val_xarrs[i].sel(**setpoint_values, method='nearest')
     return success_xarr, fit_xarrs, var_xarrs, initial_val_xarrs
