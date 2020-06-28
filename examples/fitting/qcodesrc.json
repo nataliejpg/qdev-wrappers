@@ -2,7 +2,11 @@
     "core": {
         "default_fmt": "data/{date}/#{counter}_{name}_{time}",
         "register_magic": true,
+<<<<<<< HEAD
         "db_location": "fitting.db",
+=======
+        "db_location": "../transmons_data/transmons.db",
+>>>>>>> bayesian_analysis
         "db_debug": false,
         "loglevel": "WARNING",
         "file_loglevel": "INFO"
@@ -62,8 +66,12 @@
     },
     "user": {
         "scriptfolder": ".",
+<<<<<<< HEAD
         "mainfolder": ".",
         "transmon_db_location": "../transmons_data/transmons.db"
+=======
+        "mainfolder": "."
+>>>>>>> bayesian_analysis
     },
     "station_configurator": {
         "enable_forced_reconnect": false,

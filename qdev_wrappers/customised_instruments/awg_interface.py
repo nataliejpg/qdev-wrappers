@@ -1,9 +1,6 @@
 from lomentum.types import ForgedSequenceType
 from lomentum.plotting import plotter
-<<<<<<< HEAD:qdev_wrappers/customised_instruments/AWGinterface.py
 import numpy as np
-=======
->>>>>>> lillian/dismantling_fitter:qdev_wrappers/customised_instruments/awg_interface.py
 
 
 class AWGInterface:
